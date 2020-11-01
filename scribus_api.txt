@@ -1,0 +1,57 @@
+'Scribus Python Console\n\nThis is a standard Python console with some \nknown limitations. 
+Please consult the Scribus \n
+Scripter documentation for further information.
+ 
+'rtt_LTR', 'DIRECTION_RTL', 'EXCLUSION', 'FACINGPAGES', 'FILL_CROSSDIAGONALG', 'FILL_DIAGONALG', 'FILL_HORIZONTALG', 'FILL_NOG', 'FILL_RADIALG', 'FILL_VERTICALG', 'FIRSTPAGELEFT', 'FIRSTPAGERIGHT', 'FLOP_BASELINEGRID', 'FLOP_FONTASCENT', 'FLOP_LINESPACING', 'FLOP_REALGLYPHHEIGHT', 'HARD_LIGHT', 'HUE', 'ICON_CRITICAL', 'ICON_INFORMATION', 'ICON_NONE', 'ICON_WARNING', 'ImageExport', 'JOIN_BEVEL', 'JOIN_MITTER', 'JOIN_ROUND', 'LANDSCAPE', 'LIGHTEN', 'LINE_DASH', 'LINE_DASHDOT', 'LINE_DASHDOTDOT', 'LINE_DOT', 'LINE_SOLID', 'LUMINOSITY', 'MULTIPLY', 'NOFACINGPAGES', 'NORMAL', 'NameExistsError', 'NoDocOpenError', 'NoValidObjectError', 'NotFoundError', 'OVERLAY', 'PAGE_1', 'PAGE_2', 'PAGE_3', 'PAGE_4', 'PAPER_A0', 'PAPER_A0_MM', 'PAPER_A1', 'PAPER_A1_MM', 'PAPER_A2', 'PAPER_A2_MM', 'PAPER_A3', 'PAPER_A3_MM', 'PAPER_A4', 'PAPER_A4_MM', 'PAPER_A5', 'PAPER_A5_MM', 'PAPER_A6', 'PAPER_A6_MM', 'PAPER_A7', 'PAPER_A7_MM', 'PAPER_A8', 'PAPER_A8_MM', 'PAPER_A9', 'PAPER_A9_MM', 'PAPER_B0', 'PAPER_B0_MM', 'PAPER_B1', 'PAPER_B10', 'PAPER_B10_MM', 'PAPER_B1_MM', 'PAPER_B2', 'PAPER_B2_MM', 'PAPER_B3', 'PAPER_B3_MM', 'PAPER_B4', 'PAPER_B4_MM', 'PAPER_B5', 'PAPER_B5_MM', 'PAPER_B6', 'PAPER_B6_MM', 'PAPER_B7', 'PAPER_B7_MM', 'PAPER_B8', 'PAPER_B8_MM', 'PAPER_B9', 'PAPER_B9_MM', 'PAPER_C5E', 'PAPER_COMM10E', 'PAPER_DLE', 'PAPER_EXECUTIVE', 'PAPER_FOLIO', 'PAPER_LEDGER', 'PAPER_LEGAL', 'PAPER_LETTER', 'PAPER_TABLOID', 'PDFfile', 'PORTRAIT', 'PRNLANG_PDF', 'PRNLANG_POSTSCRIPT1', 'PRNLANG_POSTSCRIPT2', 'PRNLANG_POSTSCRIPT3', 'PRNLANG_WINDOWSGDI', 'Printer', 'SATURATION', 'SCREEN', 'SOFT_LIGHT', 'ScribusException', 'TAB_CENTER', 'TAB_COMMA', 'TAB_LEFT', 'TAB_PERIOD', 'TAB_RIGHT', 'UNIT_C', 'UNIT_CENTIMETRES', 'UNIT_CICERO', 'UNIT_CM', 'UNIT_IN', 'UNIT_INCHES', 'UNIT_MILLIMETERS', 'UNIT_MM', 'UNIT_P', 'UNIT_PICAS', 'UNIT_POINTS', 'UNIT_PT', 'WrongFrameTypeError', 
+
+
+'__doc__', '__loader__', '__name__', '__package__', '__spec__', '_bu', '_i_str', '_ia', 
+
+'applyMasterPage', 'builtins', 
+
+'c', 'changeColor', 'changeColorCMYK', 'changeColorCMYKFloat', 'changeColorLab', 'changeColorRGB', 'changeColorRGBFloat', 'closeDoc', 'closeMasterPage', 'cm', 'combinePolygons', 'copyObject', 'createBezierLine', 'createCharStyle', 'createCustomLineStyle', 'createEllipse', 'createImage', 'createLayer', 'createLine', 'createMasterPage', 'createParagraphStyle', 'createPathText', 'createPdfAnnotation', 'createPolyLine', 'createPolygon', 'createRect', 'createTable', 'createText', 'currentPage', 
+
+'defineColor', 'defineColorCMYK', 'defineColorCMYKFloat', 'defineColorLab', 'defineColorRGB', 'defineColorRGBFloat', 'dehyphenateText', 'deleteColor', 'deleteLayer', 'deleteMasterPage', 'deleteObject', 'deletePage', 'deleteText', 'deselectAll', 'docChanged', 'duplicateObject', 
+
+'editMasterPage', 
+'fileDialog', 'fileQuit', 'flipObject', 
+
+'getActiveLayer', 'getAllObjects', 'getAllStyles', 'getAllText', 'getCellColumnSpan', 'getCellFillColor', 'getCellRowSpan', 'getCellStyle', 'getCellStyles', 'getCellText', 'getCharStyles', 'getCharacterStyle', 'getColor', 'getColorAsRGB', 'getColorAsRGBFloat', 'getColorFloat', 'getColorNames', 'getColumnGap', 'getColumns', 'getCornerRadius', 'getCustomLineStyle', 'getDocName', 'getFillBlendmode', 'getFillColor', 'getFillShade', 'getFillTransparency', 'getFirstLineOffset', 'getFirstLinkedFrame', 'getFont', 'getFontFeatures', 'getFontNames', 'getFontSize', 'getFrameText', 'getGuiLanguage', 'getHGuides', 'getImageColorSpace', 'getImageFile', 'getImageOffset', 'getImageScale', 'getJSActionScript', 'getLastLinkedFrame', 'getLayerBlendmode', 'getLayerTransparency', 'getLayers', 'getLineBlendmode', 'getLineCap', 'getLineColor', 'getLineJoin', 'getLineShade', 'getLineSpacing', 'getLineStyle', 'getLineStyles', 'getLineTransparency', 'getLineWidth', 'getMasterPage', 'getNextLinkedFrame', 'getObjectAttributes', 'getObjectType', 'getPageItems', 'getPageMargins', 'getPageNMargins', 'getPageNSize', 'getPageSize', 'getPageType', 'getParagraphStyle', 'getParagraphStyles', 'getPosition', 'getPrevLinkedFrame', 'getProperty', 'getPropertyCType', 'getPropertyNames', 'getRotation', 'getSelectedObject', 'getSize', 'getStyle', 'getTableColumnWidth', 'getTableColumns', 'getTableFillColor', 'getTableRowHeight', 'getTableRows', 'getTableStyle', 'getTableStyles', 'getText', 'getTextColor', 'getTextDistances', 'getTextFlowMode', 'getTextLength', 'getTextLines', 'getTextShade', 'getTextVerticalAlignment', 'getUnit', 'getVGuides', 'getXFontNames', 'getval', 
+
+'gotoPage', 'groupObjects', 
+'haveDoc', 'hyphenateText', 
+'importPage', 'inch', 
+'insertHtmlText', 'insertTableColumns', 'insertTableRows', 'insertText', 
+'isAnnotated', 'isLayerFlow', 'isLayerLocked', 'isLayerOutlined', 'isLayerPrintable', 'isLayerVisible', 'isLocked', 'isPDFBookmark', 'isSpotColor', 'layoutText', 'layoutTextChain', 
+'linkTextFrames', 
+'loadImage', 'loadStylesFromFile', 
+'lockObject', 'lowerActiveLayer', 
+'mainInterpreter', 'mainWindow', 
+'masterPageNames', 
+'mergeTableCells', 
+'messageBox',
+'messagebarText', messagebarText("It works !!!"); 
+'mm', 
+'moveObject', 'moveObjectAbs', 'moveSelectionToBack', 'moveSelectionToFront', 
+'newDoc', 'newDocDialog', 'newDocument', 'newPage', 'newStyleDialog', 
+'objectExists', 'openDoc', 'outlineText', 
+'p', 'pageCount', 'pageDimension', 
+'pasteObject', 'placeEPS', 'placeODG', 'placeSVG', 'placeSXD', 'placeVectorFile', 
+'progressReset', 'progressSet', 'progressTotal', 'pt', 
+'qApp', 'raiseActiveLayer', 
+'readPDFOptions', 'redrawAll', 
+'removeTableColumns', 'removeTableRows', 
+'renderFont', 'replaceColor', 'resizeTableColumn', 'resizeTableRow', 'retval', 
+'revertDoc', 'rotateObject', 'rotateObjectAbs', 
+'saveDoc', 'saveDocAs', 'savePDFOptions', 'savePageAsEPS', 
+'scaleGroup', 'scaleImage', 
+'scribus_version', 'scribus_version_info', 
+'scrollDocument', 
+'selectFrameText', 'selectObject', 'selectText', 'selectionCount', 
+'sentToLayer', 'setActiveLayer', 
+'setBaseLine', 'setBleeds', 'setCellBottomBorder', 'setCellBottomPadding', 'setCellFillColor', 'setCellLeftBorder', 'setCellLeftPadding', 'setCellRightBorder', 'setCellRightPadding', 'setCellStyle', 'setCellText', 'setCellTopBorder', 'setCellTopPadding', 'setCharacterStyle', 'setColumnGap', 'setColumns', 'setCornerRadius', 'setCursor', 'setCustomLineStyle', 'setDocType', 'setFileAnnotation', 'setFillBlendmode', 'setFillColor', 'setFillShade', 'setFillTransparency', 'setFirstLineOffset', 'setFont', 'setFontFeatures', 'setFontSize', 'setGradientFill', 'setGradientStop', 'setHGuides', 'setImageBrightness', 'setImageGrayscale', 'setImageOffset', 'setImageScale', 'setInfo', 'setItemName', 'setJSActionScript', 'setLayerBlendmode', 'setLayerFlow', 'setLayerLocked', 'setLayerOutlined', 'setLayerPrintable', 'setLayerTransparency', 'setLayerVisible', 'setLineBlendmode', 'setLineCap', 'setLineColor', 'setLineJoin', 'setLineShade', 'setLineSpacing', 'setLineSpacingMode', 'setLineStyle', 'setLineTransparency', 'setLineWidth', 'setLinkAnnotation', 'setMargins', 'setMultiLine', 'setNewName', 'setObjectAttributes', 'setPDFBookmark', 'setParagraphStyle', 'setProperty', 'setRedraw', 'setScaleFrameToImage', 'setScaleImageToFrame', 'setSpotColor', 'setStyle', 'setTableBottomBorder', 'setTableFillColor', 'setTableLeftBorder', 'setTableRightBorder', 'setTableStyle', 'setTableTopBorder', 'setText', 'setTextAlignment', 'setTextAnnotation', 'setTextColor', 'setTextDirection', 'setTextDistances', 'setTextFlowMode', 'setTextScalingH', 'setTextScalingV', 'setTextShade', 'setTextStroke', 'setTextVerticalAlignment', 'setURIAnnotation', 'setUnit', 'setVGuides', 
+'sizeObject', 
+
+'statusMessage', the same as messagebarText("It works!!!"); 
+'textFlowMode', 'textOverflows', 'traceText', 'unGroupObject', 'unGroupObjects', 'unlinkTextFrames', 'valueDialog', 'warnings', 'zoomDocument']
+
