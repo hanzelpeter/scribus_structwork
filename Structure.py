@@ -56,6 +56,14 @@ def findElemById(elemId):
             return item[0];
     return None; 
 
+def getElemName(elem):
+    attrs = scribus.getObjectAttributes(elem);
+    
+    if (len(attrs)<1):
+        return "<INVALID>";
+
+    return attrs[0]['Value'];
+ 
 def dumpElem(elem):
     attrs = scribus.getObjectAttributes(elem);
     
@@ -71,7 +79,7 @@ def dumpElem(elem):
     allNames = '' #json.dumps(attrs);
     allNames = '' #str(attrs);
 
-    return elemName + '[@id=' + elemId + '] parent:(' + parent + ') text:' + text;
+    return elemName + '[@id=' + elemId + '] p:(' + parent + ') t:' + text;
 
 def getParentElemId(elem):
     attrs = scribus.getObjectAttributes(elem);
@@ -128,21 +136,34 @@ def main(argv):
 
     elem = textbox;
     pathUp = '';
+    pathUpShort = "";
 
     while elem != None:
         elemId = getElemId(elem);
         pElemId = getParentElemId(elem);
+        pathUpShort = getElemName(elem) + "/" + pathUpShort;
         pathUp = dumpElem(elem) + " // " +  pathUp;
         elem = findElemById(pElemId);
 
     if (pathUp != ''):
         pathUp = pathUp[0:len(pathUp)-4];
+    if (pathUpShort != ''):
+        pathUpShort = pathUpShort[0:len(pathUpShort)-1];
 
     #framename = scribus.valueDialog('XML Tree','XML Tree', elemName + '[@id=' + elemId + '] parent: ' + parent + ' text:' + text + "," + parent)
-    framename = scribus.valueDialog('XML Tree','XML Tree (Path UP)', pathUp);
+    #scribus.messagebarText("It works !!!");
+    scribus.statusMessage(pathUp);
+    #scribus.zoomDocument(200);
+    #scribus.selectFrameText(0,100);
+    #framename = scribus.valueDialog('XML Tree','XML Tree (Path UP)', pathUp);
 
-    if (not framename) :
-        sys.exit(0)
+    #scribus.qApp.aboutQt();
+    
+    #if (not framename) :
+    #    sys.exit(0)
+    scribus.messageBox('XML struct',
+            pathUp + "\n\n" + pathUpShort,
+            scribus.ICON_WARNING, scribus.BUTTON_OK)
 
 if __name__ == '__main__':
     # This script makes no sense without a document open
