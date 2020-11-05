@@ -141,7 +141,7 @@ def main(argv):
     while elem != None:
         elemId = getElemId(elem);
         pElemId = getParentElemId(elem);
-        pathUpShort = getElemName(elem) + "/" + pathUpShort;
+        pathUpShort = "<" + getElemName(elem) + ">" + "\n" + pathUpShort;
         pathUp = dumpElem(elem) + " // " +  pathUp;
         elem = findElemById(pElemId);
 
@@ -157,13 +157,14 @@ def main(argv):
     #scribus.selectFrameText(0,100);
     #framename = scribus.valueDialog('XML Tree','XML Tree (Path UP)', pathUp);
 
-    #scribus.qApp.aboutQt();
+    #t = scribus.qApp.mainWidget();
     
     #if (not framename) :
     #    sys.exit(0)
-    scribus.messageBox('XML struct',
-            pathUp + "\n\n" + pathUpShort,
-            scribus.ICON_WARNING, scribus.BUTTON_OK)
+    #scribus.messageBox('XML struct',
+    #        pathUp + "\n\n" + pathUpShort,
+    #        scribus.ICON_WARNING, scribus.BUTTON_OK)
+    scribus.structview(pathUpShort);
 
 if __name__ == '__main__':
     # This script makes no sense without a document open
