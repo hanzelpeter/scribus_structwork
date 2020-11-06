@@ -63,7 +63,15 @@ def getElemName(elem):
         return "<INVALID>";
 
     return attrs[0]['Value'];
- 
+
+def getElemId(elem):
+    attrs = scribus.getObjectAttributes(elem);
+    
+    if (len(attrs)<2):
+        return -1;
+
+    return int(attrs[1]['Value']);
+
 def dumpElem(elem):
     attrs = scribus.getObjectAttributes(elem);
     
@@ -141,7 +149,12 @@ def main(argv):
     while elem != None:
         elemId = getElemId(elem);
         pElemId = getParentElemId(elem);
-        pathUpShort = "<" + getElemName(elem) + ">" + "\n" + pathUpShort;
+
+        text = scribus.getText(elem);
+        if (text.find("Holder")!=-1):
+            text = "";
+        
+        pathUpShort = "<" + getElemName(elem) + " id=\"" + str(getElemId(elem)) + "\">" + text + "\n" + pathUpShort;
         pathUp = dumpElem(elem) + " // " +  pathUp;
         elem = findElemById(pElemId);
 
