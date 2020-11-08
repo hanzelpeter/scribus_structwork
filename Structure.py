@@ -121,6 +121,31 @@ def createDOMElement(xmldoc, scElem):
             xmlelem.appendChild(xmldoc.createTextNode(text));
     return xmlelem;
 
+def createDOMDocument():
+    root = None;
+    d = dict();
+    impl = getDOMImplementation();
+    newdoc = impl.createDocument(None, "root", None);
+ 
+    pageitems = scribus.getPageItems()
+    for item in pageitems:
+        if (item[1] == 4):
+            elemId = getElemId(item[0]);
+            pElemId = getParentElemId(item[0]);
+            if (elemId != -1 and pElemId == -1):
+                root = item[0];
+            if (elemId != -1 and pElemId != -1):
+                xmlElem = createDOMElement(newdoc, item[0]);
+                d[elemId] = xmlElem;
+
+    #for now flat tree
+    xmlRoot = newdoc.documentElement;
+    xmlRoot.setAttribute("id", str(getElemId(root)));
+    xmlRoot.tagName = getElemName(root);
+    for x in d.values():
+        xmlRoot.appendChild(x);
+    return newdoc;
+
 def main(argv):
 
     unit = scribus.getUnit()
@@ -189,12 +214,14 @@ def main(argv):
     #        pathUp + "\n\n" + pathUpShort,
     #        scribus.ICON_WARNING, scribus.BUTTON_OK)
 
-    impl = getDOMImplementation();
-    newdoc = impl.createDocument(None, "root", None);
+    #impl = getDOMImplementation();
+    #newdoc = impl.createDocument(None, "root", None);
 
-    xmlelem = createDOMElement(newdoc, textbox);
-    newdoc.documentElement.appendChild(xmlelem);
+    newdoc = createDOMDocument();
+    #xmlelem = createDOMElement(newdoc, root);
+    #newdoc.documentElement.appendChild(xmlelem);
     x = newdoc.toxml();
+    #x = str(dir(root));
 
     scribus.structview(x);
 
