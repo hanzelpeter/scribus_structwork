@@ -31,6 +31,7 @@ Select a textframe
 try:
     import scribus
     import json
+    from xml.dom.minidom import *;
 except ImportError:
     print ("Unable to import the 'scribus' module. This script will only run within")
     print ("the Python interpreter embedded in Scribus. Try Script->Execute Script.")
@@ -110,6 +111,16 @@ def getElemId(elem):
     elemId = int(attrs[1]['Value']);
     return elemId;
 
+def createDOMElement(xmldoc, scElem):
+    name = getElemName(scElem);
+    eid = getElemId(scElem)
+    xmlelem = xmldoc.createElement(name);
+    xmlelem.setAttribute("id", str(eid));
+    text = scribus.getText(scElem);
+    if (len(text)>0 and text.find("Holder")==-1):
+            xmlelem.appendChild(xmldoc.createTextNode(text));
+    return xmlelem;
+
 def main(argv):
 
     unit = scribus.getUnit()
@@ -177,7 +188,15 @@ def main(argv):
     #scribus.messageBox('XML struct',
     #        pathUp + "\n\n" + pathUpShort,
     #        scribus.ICON_WARNING, scribus.BUTTON_OK)
-    scribus.structview(pathUpShort);
+
+    impl = getDOMImplementation();
+    newdoc = impl.createDocument(None, "root", None);
+
+    xmlelem = createDOMElement(newdoc, textbox);
+    newdoc.documentElement.appendChild(xmlelem);
+    x = newdoc.toxml();
+
+    scribus.structview(x);
 
 if __name__ == '__main__':
     # This script makes no sense without a document open
