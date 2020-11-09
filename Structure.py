@@ -124,6 +124,7 @@ def createDOMElement(xmldoc, scElem):
 def createDOMDocument():
     root = None;
     d = dict();
+    i = dict();
     impl = getDOMImplementation();
     newdoc = impl.createDocument(None, "root", None);
  
@@ -137,13 +138,41 @@ def createDOMDocument():
             if (elemId != -1 and pElemId != -1):
                 xmlElem = createDOMElement(newdoc, item[0]);
                 d[elemId] = xmlElem;
+                i[elemId] = pElemId;
 
     #for now flat tree
+    #xmlRoot = newdoc.documentElement;
+    #xmlRoot.setAttribute("id", str(getElemId(root)));
+    #xmlRoot.tagName = getElemName(root);
+    #for x in d.values():
+    #    xmlRoot.appendChild(x);
+
     xmlRoot = newdoc.documentElement;
     xmlRoot.setAttribute("id", str(getElemId(root)));
     xmlRoot.tagName = getElemName(root);
-    for x in d.values():
-        xmlRoot.appendChild(x);
+
+    #append childs level below root
+    for x in i.values():
+        key = -1;
+        for u in d.keys():
+            if (u == x):
+                key = x;
+        if (key != -1):
+            pXmlElem = d[key];
+        
+            # TODO: order of child is missing
+            for y in i.keys():
+                if (i[y] == key):
+                    pXmlElem.appendChild(d[y]);
+
+
+    #append root childs
+    rootId = getElemId(root);
+    # TODO: order of child is missing
+    for y in i.keys():
+        if (i[y] == rootId):
+            xmlRoot.appendChild(d[y]);
+
     return newdoc;
 
 def main(argv):

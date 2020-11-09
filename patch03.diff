@@ -1,0 +1,322 @@
+diff --git a/scribus/plugins/scriptplugin/cmddoc.cpp b/scribus/plugins/scriptplugin/cmddoc.cpp
+index 258314045..3dcccb0d0 100644
+--- a/scribus/plugins/scriptplugin/cmddoc.cpp
++++ b/scribus/plugins/scriptplugin/cmddoc.cpp
+@@ -181,11 +181,273 @@ PyObject *scribus_closedoc(PyObject* /* self */)
+ 	return PyLong_FromLong(static_cast<long>(ret));
+ }
+ 
++#include <QSyntaxHighlighter>
++
++class XMLHighlighter : public QSyntaxHighlighter
++{
++public:
++    XMLHighlighter(QTextDocument *parent) : QSyntaxHighlighter(parent) {
++        HighlightingRule rule;
++
++        // >text<
++        QTextCharFormat xmlValueElementFormat;
++        xmlValueElementFormat.setForeground(Qt::black);
++        xmlValueElementFormat.setFontWeight(QFont::Bold);
++        rule.pattern = QRegExp(">[^\n]*<");
++        rule.format = xmlValueElementFormat;
++        highlightingRules.append(rule);
++
++        // keywords
++        QTextCharFormat keywordFormat;
++        keywordFormat.setForeground(Qt::blue);
++        keywordFormat.setFontWeight(QFont::Bold);
++        QStringList keywords;
++        keywords << "\\b?xml\\b" << "/>" << ">" << "<";
++        foreach (const QString &keyword, keywords) {
++            rule.pattern = QRegExp(keyword);
++            rule.format = keywordFormat;
++            highlightingRules.append(rule);
++        }
++
++        // <Text> </Text>
++        QTextCharFormat xmlElementFormat;
++        xmlElementFormat.setForeground(Qt::blue);
++        rule.pattern = QRegExp("\\b[A-Za-z0-9_]+(?=[\/>])");
++        rule.format = xmlElementFormat;
++        highlightingRules.append(rule);
++
++        // < Text= >
++        QTextCharFormat xmlAttributeFormat;
++        xmlAttributeFormat.setForeground(Qt::red);
++        rule.pattern = QRegExp("\\b[A-Za-z0-9_]+(?=\\=)");
++        rule.format = xmlAttributeFormat;
++        highlightingRules.append(rule);
++
++        // <!-- Text -->
++        QTextCharFormat singleLineCommentFormat;
++        singleLineCommentFormat.setForeground(Qt::gray);
++        rule.pattern = QRegExp("<!--[^\n]*-->");
++        rule.format = singleLineCommentFormat;
++        highlightingRules.append(rule);
++
++        // = "Text"
++        QColor valueColor(128, 0, 255);
++        valueFormat.setForeground(valueColor);
++        valueFormat.setFontWeight(QFont::Bold);
++        valueStartExpression.setPattern("\"");
++        valueEndExpression.setPattern("\"(?=[\s></])");
++    }
++
++    virtual ~XMLHighlighter() {
++    }
++
++private:
++    struct HighlightingRule
++    {
++        QRegExp pattern;
++        QTextCharFormat format;
++    };
++    QVector<HighlightingRule> highlightingRules;
++
++    QTextCharFormat valueFormat;
++    QRegExp valueStartExpression;
++    QRegExp valueEndExpression;
++
++    void highlightBlock(const QString & text)
++    {
++        //for every pattern
++        foreach (const HighlightingRule &rule, highlightingRules)
++        {
++            QRegExp expression(rule.pattern);
++            int index = expression.indexIn(text);
++
++            while(index >= 0) {
++                int length = expression.matchedLength();
++                this->setFormat(index, length, rule.format);
++                index = expression.indexIn(text, index + length);
++            }
++        }
++
++        this->setCurrentBlockState(0);
++        int startIndex = 0;
++
++        if(this->previousBlockState() != 1)
++            startIndex = valueStartExpression.indexIn(text);
++
++        while(startIndex >= 0)
++        {
++            int endIndex = valueEndExpression.indexIn(text, startIndex);
++            int commentLength;
++
++            if (endIndex == -1) {
++                this->setCurrentBlockState(1);
++                commentLength = text.length() - startIndex;
++            }
++            else {
++                commentLength = endIndex - startIndex + valueEndExpression.matchedLength();
++            }
++
++            this->setFormat(startIndex, commentLength, valueFormat);
++            startIndex = valueStartExpression.indexIn(text, startIndex + commentLength);
++        }
++    }
++};
++
++#include <QtWebKitWidgets/QWebView>
++
+ PyObject *scribus_havedoc(PyObject* /* self */)
+ {
+ 	return PyLong_FromLong(static_cast<long>(ScCore->primaryMainWindow()->HaveDoc));
+ }
+ 
++#include <QDialog>
++#include <QDialogButtonBox>
++#include <QFormLayout>
++#include <QTextEdit>
++#include <QDomDocument>
++#include <QtWebKitWidgets/QWebView>
++
++
++//PyObject *scribus_structview(PyObject* /* self */)
++/*{
++	//qApp->desktop()->
++	
++	//QMessageBox msgBox;
++	//msgBox.setText("The StructView welcomes you.");
++	//msgBox.exec();
++	
++	//QDialogButtonBox *box = new QDialogButtonBox(QDialogButtonBox::Ok);
++	//box->show();
++	//
++	
++	QDialog *dlg = new QDialog();
++	QFormLayout *lay = new QFormLayout();
++	//QTextDocument *doc = new QTextDocument("<root>Oako</root>");
++
++
++	//lay->addRow(new QLabel("Sem daco daj"), (QWidget*)(new XMLHighlighter(doc)));
++
++	//QDomDocument doc;
++	//QDomElement root = doc.createElement("root");
++	//QDomText text = doc.createTextNode("ty vole!!!");
++	//root.appendChild(text);
++
++	QTextEdit *line = new QTextEdit();
++	line->setHtml("<body><p>&lt;root&gt;</p></body>");
++	lay->addRow(new QLabel("Tu mas XML:"), line);
++	dlg->setLayout(lay);
++	dlg->setWindowTitle("dyn dialog");
++
++	dlg->show();
++	
++	return nullptr;
++}*/
++
++PyObject *scribus_structview(PyObject* /* self */, PyObject *args)
++{
++	//qApp->desktop()->
++	
++	//QMessageBox msgBox;
++	//msgBox.setText("The StructView welcomes you.");
++	//msgBox.exec();
++	
++	//QDialogButtonBox *box = new QDialogButtonBox(QDialogButtonBox::Ok);
++	//box->show();
++	//
++	char *Name;
++	if (!PyArg_ParseTuple(args, "es", "utf-8", &Name))
++		return nullptr;
++
++	QDialog *dlg = new QDialog();
++	QFormLayout *lay = new QFormLayout();
++	//QTextDocument *doc = new QTextDocument("<root>Oako</root>");
++
++
++	//lay->addRow(new QLabel("Sem daco daj"), (QWidget*)(new XMLHighlighter(doc)));
++
++	//QDomDocument doc;
++	//QDomElement root = doc.createElement("root");
++	//QDomText text = doc.createTextNode("ty vole!!!");
++	//root.appendChild(text);
++
++	QTextEdit *line = new QTextEdit();
++
++	QString text = QString(Name);
++	text = text.replace("<", "&lt;");
++	text = text.replace(">", "&gt;");
++	text = text.replace("\n", "<br/>");
++
++		
++	
++	QString html = "<html xmlns='https://www.w3.org/1999/xhtml'> \
++	<head>  <meta http-equiv='Content-Type' content='text/html; charset=utf-8' /> \
++		<title>My test</title> \
++		<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css' /> \
++		<!--<link rel='stylesheet' media='screen and (min-device-width: 1440px)' href='style.css' /> \ 
++		<link rel='stylesheet' media='screen and (min-width: 800px) and (max-width: 1440px)' href='medium-style.css' /> \
++		<link rel='stylesheet' media='screen and (min-width: 100px) and (max-width: 799px)' href='mobile-style.css' /> \
++		--> \
++	<script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.1/jquery.min.js'></script> \
++	<script src='https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js'></script> \
++	</head> \
++	<body> \
++		<div id='jstree'> \
++    <!-- in this example the tree is populated from inline HTML --> \
++    <ul> \
++	<li>GEN0.1 \
++		<ul> \
++			<li id='Title'>Title</li> \
++			<li>Para</li> \
++		</ul> \
++	</li> \
++    </ul> \
++  </div> \
++  <button>demo button</button> \
++\
++  <!-- 4 include the jQuery library --> \
++<script> \
++  $(function () { \
++    // 6 create an instance when the DOM is ready \
++    $('#jstree').jstree(); \
++    // 7 bind to events triggered on the tree \
++    $('#jstree').on('changed.jstree', function (e, data) { \
++      console.log(data.selected); \
++    }); \
++    // 8 interact with the tree - either way is OK \
++    $('button').on('click', function () { \
++      $('#jstree').jstree(true).select_node('Title'); \
++      $('#jstree').jstree('select_node', 'Title'); \
++      $.jstree.reference('#jstree').select_node('Title'); \
++    }); \
++  }); \
++  </script> \
++ \
++	</body> \
++</html>";
++
++
++	QWebView *web = new QWebView(dlg);
++	//web->setHtml(html);
++	web->load(QUrl("file:///home/peter/Sources/root.html"));
++	
++  
++  	line->setHtml("<body><p>" + text + "</p></body>");
++
++	lay->addRow(new QLabel("Tu mas XML view:"), web);
++	lay->addRow(new QLabel("Tu mas XML flat:"), line);
++	dlg->setLayout(lay);
++	dlg->setWindowTitle("dyn dialog");
++
++	dlg->show();
++	
++	/*MainWindow win(qApp->desktop());
++	win.setWindowModality(Qt::ApplicationModal);
++	win.show();*/
++
++	return PyBool_FromLong(static_cast<long>(true));;
++}
++
++
+ PyObject *scribus_opendoc(PyObject* /* self */, PyObject* args)
+ {
+ 	char *Name;
+@@ -486,6 +748,7 @@ void cmddocdocwarnings()
+ 	  << scribus_getmasterpage__doc__
+ 	  << scribus_getunit__doc__ 
+ 	  << scribus_havedoc__doc__
++	  << scribus_structview__doc__
+ 	  << scribus_loadstylesfromfile__doc__
+ 	  << scribus_masterpagenames__doc__ 
+ 	  << scribus_newdoc__doc__ 
+diff --git a/scribus/plugins/scriptplugin/cmddoc.h b/scribus/plugins/scriptplugin/cmddoc.h
+index 656e93b9a..d6d7594e3 100644
+--- a/scribus/plugins/scriptplugin/cmddoc.h
++++ b/scribus/plugins/scriptplugin/cmddoc.h
+@@ -118,6 +118,17 @@ Returns the quantity of open documents: 0 if none are opened.\n\
+ /** Checks if is a document opened. */
+ PyObject *scribus_havedoc(PyObject * /*self*/);
+ 
++/*! docstring */
++PyDoc_STRVAR(scribus_structview__doc__,
++QT_TR_NOOP("structview() -> int\n\
++\n\
++TODO pha.\n\
++"));
++/** TODO pha. */
++PyObject *scribus_structview(PyObject * /*self*/, PyObject* args);
++
++
++
+ /*! docstring */
+ PyDoc_STRVAR(scribus_opendoc__doc__,
+ QT_TR_NOOP("openDoc(\"name\")\n\
+diff --git a/scribus/plugins/scriptplugin/scriptplugin.cpp b/scribus/plugins/scriptplugin/scriptplugin.cpp
+index 6c3fb4236..9a91fb6c0 100644
+--- a/scribus/plugins/scriptplugin/scriptplugin.cpp
++++ b/scribus/plugins/scriptplugin/scriptplugin.cpp
+@@ -447,6 +447,9 @@ PyMethodDef scribus_methods[] = {
+ 	{const_cast<char*>("mergeTableCells"), scribus_mergetablecells, METH_VARARGS, tr(scribus_mergetablecells__doc__)},
+ 	{const_cast<char*>("messageBox"), (PyCFunction)scribus_messagebox, METH_VARARGS|METH_KEYWORDS, tr(scribus_messagebox__doc__)},
+ 	{const_cast<char*>("messagebarText"), scribus_statusmessage, METH_VARARGS, tr(scribus_statusmessage__doc__)}, // Deprecated
++
++	{const_cast<char*>("structview"), (PyCFunction)scribus_structview, METH_VARARGS, tr(scribus_structview__doc__)},
++
+ 	{const_cast<char*>("moveObject"), scribus_moveobjectrel, METH_VARARGS, tr(scribus_moveobjectrel__doc__)},
+ 	{const_cast<char*>("moveObjectAbs"), scribus_moveobjectabs, METH_VARARGS, tr(scribus_moveobjectabs__doc__)},
+ 	{const_cast<char*>("moveSelectionToBack"), (PyCFunction)scribus_moveselectiontoback, METH_NOARGS, tr(scribus_moveselectiontoback__doc__) },
