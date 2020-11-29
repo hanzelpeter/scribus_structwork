@@ -1,0 +1,2431 @@
+diff --git a/scribus/actionmanager.cpp b/scribus/actionmanager.cpp
+index af1c343db..bd5e52df4 100644
+--- a/scribus/actionmanager.cpp
++++ b/scribus/actionmanager.cpp
+@@ -960,6 +960,11 @@ void ActionManager::initToolsMenuActions()
+ void ActionManager::initExtrasMenuActions()
+ {
+ 	QString name;
++
++	name = "Login";
++	scrActions->insert(name, new ScrAction("", defaultKey("extrasHyphenateText"), mainWindow));
++	
++
+ 	name = "extrasManageImages";
+ 	scrActions->insert(name, new ScrAction("", defaultKey(name), mainWindow));
+ 	name = "extrasHyphenateText";
+@@ -1746,6 +1751,7 @@ void ActionManager::languageChange()
+ 	(*scrActions)["toolsPDFAnnot3D"]->setTexts( tr("3D Annotation"));
+ #endif
+ 
++	(*scrActions)["Login"]->setTexts("&Login");
+ 	//Extras Menu
+ 	(*scrActions)["extrasManageImages"]->setTexts( tr("&Manage Images..."));
+ 	(*scrActions)["extrasHyphenateText"]->setTexts( tr("&Hyphenate Text"));
+@@ -2025,6 +2031,7 @@ void ActionManager::createDefaultMenuNames()
+ 	defMenuNames.append(QPair<QString, QStringList>("View", QStringList()));
+ 	defMenuNames.append(QPair<QString, QStringList>("Table", QStringList()));
+ 	defMenuNames.append(QPair<QString, QStringList>("Extras", QStringList()));
++	defMenuNames.append(QPair<QString, QStringList>("eAIP", QStringList()));
+ 	defMenuNames.append(QPair<QString, QStringList>("Windows", QStringList()));
+ 	defMenuNames.append(QPair<QString, QStringList>("Help", QStringList()));
+ 
+@@ -2047,6 +2054,9 @@ void ActionManager::createDefaultMenuNames()
+ 	++itMenuNames;
+ 	itMenuNames->second << tr("Extras") << "E&xtras" << tr("E&xtras");
+ 	++itMenuNames;
++	itMenuNames->second << "eAIP" << "eAIP" << "eAIP";
++	++itMenuNames;
++
+ 	itMenuNames->second << tr("Windows") << "&Windows" << tr("&Windows");
+ 	++itMenuNames;
+ 	itMenuNames->second << tr("Help") << "&Help" << tr("&Help");
+diff --git a/scribus/filewatcher.cpp b/scribus/filewatcher.cpp
+index 73a3545f7..de57c76b1 100644
+--- a/scribus/filewatcher.cpp
++++ b/scribus/filewatcher.cpp
+@@ -11,7 +11,7 @@ for which a new license (GPL+exception) is in place.
+ #include <thread>
+ 
+ #ifdef HAVE_UNISTD_H
+-#include <unistd.h>
++//#include <unistd.h>
+ #endif
+ 
+ #include <QDebug>
+diff --git a/scribus/fonts/ftface.cpp b/scribus/fonts/ftface.cpp
+index e7e609af0..ebab8f5d1 100644
+--- a/scribus/fonts/ftface.cpp
++++ b/scribus/fonts/ftface.cpp
+@@ -6,11 +6,11 @@ for which a new license (GPL+exception) is in place.
+ */
+ 
+ #include "fonts/ftface.h"
++#include <freetype/ftoutln.h>
++#include <freetype/ftglyph.h>
++#include <freetype\ttnameid.h>
++#include <freetype/ftcid.h>
+ 
+-#include FT_CID_H
+-#include FT_OUTLINE_H
+-#include FT_GLYPH_H
+-#include FT_TRUETYPE_IDS_H
+ 
+ #include <QObject>
+ #include <QFile>
+diff --git a/scribus/fonts/scface.h b/scribus/fonts/scface.h
+index 581f0b589..cb57e6393 100644
+--- a/scribus/fonts/scface.h
++++ b/scribus/fonts/scface.h
+@@ -27,7 +27,7 @@ virtual:      dispatch to constituents, handle embedding (-)
+ #include <utility>
+ 
+ #include <ft2build.h>
+-#include FT_FREETYPE_H
++#include <freetype\freetype.h>
+ 
+ #include "fpointarray.h"
+ 
+diff --git a/scribus/fonts/scfontmetrics.h b/scribus/fonts/scfontmetrics.h
+index 0c73e21e9..0ace1b292 100644
+--- a/scribus/fonts/scfontmetrics.h
++++ b/scribus/fonts/scfontmetrics.h
+@@ -15,10 +15,9 @@ for which a new license (GPL+exception) is in place.
+ //Added by qt3to4:
+ #include <QPixmap>
+ 
+-#include <ft2build.h>
+-#include FT_FREETYPE_H
+-#include FT_OUTLINE_H
+-#include FT_GLYPH_H
++#include <freetype\freetype.h>
++#include <freetype\ftoutln.h>
++#include <freetype\ftglyph.h>
+ 
+ #include "scribusapi.h"
+ #include "fpoint.h"
+diff --git a/scribus/imagedataloaders/scimgdataloader_kra.cpp b/scribus/imagedataloaders/scimgdataloader_kra.cpp
+index 94bc002e6..73cc033d2 100644
+--- a/scribus/imagedataloaders/scimgdataloader_kra.cpp
++++ b/scribus/imagedataloaders/scimgdataloader_kra.cpp
+@@ -94,11 +94,13 @@ QByteArray ScImgDataLoader_KRA::getICCProfileFromPNGData(QByteArray& pngData)
+ 	// Read image profile
+     png_charp profileName;
+ 	png_bytep profileBuffer;
++	png_charp profile;
+ 	int compression_type;
+ 	png_uint_32 profileLen;
+ 
+-	if (png_get_iCCP(pngPtr, pngInfo, &profileName, &compression_type, &profileBuffer, &profileLen))
++	if (png_get_iCCP(pngPtr, pngInfo, &profileName, &compression_type, &profile, &profileLen))
+ 	{
++		profileBuffer = (png_bytep)profile;
+ 		QByteArray profArray = QByteArray((const char*) profileBuffer, profileLen);
+ 		if ((profArray.size() >= 40) && (profArray[36] == 'a') && (profArray[37] == 'c') && (profArray[38] == 's') && (profArray[39] == 'p'))
+ 			profileData = profArray;
+diff --git a/scribus/imagedataloaders/scimgdataloader_pgf.cpp b/scribus/imagedataloaders/scimgdataloader_pgf.cpp
+index ba4167940..55ab884d2 100644
+--- a/scribus/imagedataloaders/scimgdataloader_pgf.cpp
++++ b/scribus/imagedataloaders/scimgdataloader_pgf.cpp
+@@ -21,7 +21,7 @@ for which a new license (GPL+exception) is in place.
+ extern "C"
+ {
+ #ifdef HAVE_UNISTD_H
+-#include <unistd.h>
++//#include <unistd.h>
+ #endif
+ #include <sys/types.h>
+ #include <sys/stat.h>
+diff --git a/scribus/imagedataloaders/scimgdataloader_png.cpp b/scribus/imagedataloaders/scimgdataloader_png.cpp
+index 7ed966458..267dabc5b 100644
+--- a/scribus/imagedataloaders/scimgdataloader_png.cpp
++++ b/scribus/imagedataloaders/scimgdataloader_png.cpp
+@@ -90,11 +90,13 @@ void ScImgDataLoader_PNG::loadEmbeddedProfile(const QString& fn, int /*page*/)
+ 	// Read image profile
+     png_charp profileName;
+ 	png_bytep profileData;
++	png_charp profile;
+ 	int compression_type;
+ 	png_uint_32 profileLen;
+ 
+-	if (png_get_iCCP(pngPtr, pngInfo, &profileName, &compression_type, &profileData, &profileLen))
++	if (png_get_iCCP(pngPtr, pngInfo, &profileName, &compression_type, &profile, &profileLen))
+ 	{
++		profileData = (png_bytep)profile;
+ 		QByteArray profArray = QByteArray((const char*) profileData, profileLen);
+ 		ScColorProfile prof = ScCore->defaultEngine.openProfileFromMem(profArray);
+ 		if (prof && prof.isSuitableForOutput())
+diff --git a/scribus/main_win32.cpp b/scribus/main_win32.cpp
+index 287b64b6c..0609878c9 100644
+--- a/scribus/main_win32.cpp
++++ b/scribus/main_win32.cpp
+@@ -81,6 +81,17 @@ bool emergencyActivated;
+ #pragma comment(lib, "qtmaind.lib")
+ #else
+ #pragma comment(lib, "qtmain.lib")
++#pragma comment(lib, "libtiff.lib")
++#pragma comment(lib, "zlib.lib")
++#pragma comment(lib, "libpng.lib")
++#pragma comment(lib, "jpeglib.lib")
++#pragma comment(lib, "lcms2_static.lib")
++#pragma comment(lib, "freetype.lib")
++#pragma comment(lib, "cairo.lib")
++#pragma comment(lib, "harfbuzz.lib")
++#pragma comment(lib, "icuuc.lib")
++#pragma comment(lib, "podofo.lib")
++
+ #endif
+ #endif
+ 
+diff --git a/scribus/pdflib_core.cpp b/scribus/pdflib_core.cpp
+index 28ef1b9a2..d4753c12a 100644
+--- a/scribus/pdflib_core.cpp
++++ b/scribus/pdflib_core.cpp
+@@ -32,7 +32,7 @@ for which a new license (GPL+exception) is in place.
+ #include <cstdlib>
+ #include <string>
+ #ifdef HAVE_UNISTD_H
+-#include <unistd.h>
++//#include <unistd.h>
+ #endif
+ 
+ #include "rc4.h"
+diff --git a/scribus/plugins/export/xpsexport/xpsexplugin.cpp b/scribus/plugins/export/xpsexport/xpsexplugin.cpp
+index ca7147fd1..c79059c4a 100644
+--- a/scribus/plugins/export/xpsexport/xpsexplugin.cpp
++++ b/scribus/plugins/export/xpsexport/xpsexplugin.cpp
+@@ -61,6 +61,8 @@ for which a new license (GPL+exception) is in place.
+ #include "third_party/zip/scribus_zip.h"
+ #include "text/boxes.h"
+ 
++#pragma comment(lib, "zlib.lib")
++
+ int xpsexplugin_getPluginAPIVersion()
+ {
+ 	return PLUGIN_API_VERSION;
+diff --git a/scribus/plugins/gettext/docxim/docxim.cpp b/scribus/plugins/gettext/docxim/docxim.cpp
+index 1218ed334..30c9b1abc 100755
+--- a/scribus/plugins/gettext/docxim/docxim.cpp
++++ b/scribus/plugins/gettext/docxim/docxim.cpp
+@@ -22,6 +22,7 @@ for which a new license (GPL+exception) is in place.
+ #include "prefsmanager.h"
+ #include "ui/missing.h"
+ 
++#pragma comment(lib, "zlib.lib")
+ 
+ QString FileFormatName()
+ {
+diff --git a/scribus/plugins/gettext/htmlim/htmlim.cpp b/scribus/plugins/gettext/htmlim/htmlim.cpp
+index a4d5ddf54..852af2997 100644
+--- a/scribus/plugins/gettext/htmlim/htmlim.cpp
++++ b/scribus/plugins/gettext/htmlim/htmlim.cpp
+@@ -38,6 +38,8 @@ for which a new license (GPL+exception) is in place.
+ #include "gtparagraphstyle.h" // Style for paragraph based formatting.
+ #include "gtframestyle.h"
+ 
++#pragma comment(lib, "libxml2.lib")
++
+ QString FileFormatName()
+ {
+     return QObject::tr("HTML Files");
+diff --git a/scribus/plugins/gettext/odt2im/importodt.cpp b/scribus/plugins/gettext/odt2im/importodt.cpp
+index 75ccade17..872cb86e7 100644
+--- a/scribus/plugins/gettext/odt2im/importodt.cpp
++++ b/scribus/plugins/gettext/odt2im/importodt.cpp
+@@ -16,6 +16,8 @@ for which a new license (GPL+exception) is in place.
+ #include <QByteArray>
+ #include <QScopedPointer>
+ 
++#pragma comment(lib, "zlib.lib")
++
+ #include "scribusdoc.h"
+ #include "styles/charstyle.h"
+ #include "styles/paragraphstyle.h"
+diff --git a/scribus/plugins/gettext/sxwim/sxwim.cpp b/scribus/plugins/gettext/sxwim/sxwim.cpp
+index 6e6088ad4..58bfbbb3e 100644
+--- a/scribus/plugins/gettext/sxwim/sxwim.cpp
++++ b/scribus/plugins/gettext/sxwim/sxwim.cpp
+@@ -24,6 +24,9 @@ for which a new license (GPL+exception) is in place.
+  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.             *
+  ***************************************************************************/
+ 
++#pragma comment(lib, "zlib.lib")
++#pragma comment(lib, "libxml2.lib")
++
+ #include "sxwim.h"
+ #include <QStringList>
+ #include <QTemporaryDir>
+diff --git a/scribus/plugins/import/idml/importidmlplugin.cpp b/scribus/plugins/import/idml/importidmlplugin.cpp
+index 0a67168b5..822048012 100644
+--- a/scribus/plugins/import/idml/importidmlplugin.cpp
++++ b/scribus/plugins/import/idml/importidmlplugin.cpp
+@@ -26,6 +26,8 @@ for which a new license (GPL+exception) is in place.
+ #include "ui/customfdialog.h"
+ #include "ui/scmwmenumanager.h"
+ 
++#pragma comment(lib, "zlib.lib")
++
+ int importidml_getPluginAPIVersion()
+ {
+ 	return PLUGIN_API_VERSION;
+diff --git a/scribus/plugins/import/odg/importodgplugin.cpp b/scribus/plugins/import/odg/importodgplugin.cpp
+index 67bc0502a..15a28e03c 100644
+--- a/scribus/plugins/import/odg/importodgplugin.cpp
++++ b/scribus/plugins/import/odg/importodgplugin.cpp
+@@ -26,6 +26,8 @@ for which a new license (GPL+exception) is in place.
+ #include "ui/customfdialog.h"
+ #include "ui/scmwmenumanager.h"
+ 
++#pragma comment(lib, "zlib.lib")
++
+ int importodg_getPluginAPIVersion()
+ {
+ 	return PLUGIN_API_VERSION;
+diff --git a/scribus/plugins/import/oodraw/oodrawimp.cpp b/scribus/plugins/import/oodraw/oodrawimp.cpp
+index 37af5fcc3..07fd13cbe 100644
+--- a/scribus/plugins/import/oodraw/oodrawimp.cpp
++++ b/scribus/plugins/import/oodraw/oodrawimp.cpp
+@@ -48,7 +48,7 @@ for which a new license (GPL+exception) is in place.
+ #include "util.h"
+ #include "util_math.h"
+ 
+-
++#pragma comment(lib, "zlib.lib")
+ 
+ using namespace std;
+ 
+diff --git a/scribus/plugins/import/pages/importpagesplugin.cpp b/scribus/plugins/import/pages/importpagesplugin.cpp
+index bc059df03..02021bac1 100644
+--- a/scribus/plugins/import/pages/importpagesplugin.cpp
++++ b/scribus/plugins/import/pages/importpagesplugin.cpp
+@@ -26,6 +26,8 @@ for which a new license (GPL+exception) is in place.
+ #include "ui/customfdialog.h"
+ #include "ui/scmwmenumanager.h"
+ 
++#pragma comment(lib, "zlib.lib")
++
+ int importpages_getPluginAPIVersion()
+ {
+ 	return PLUGIN_API_VERSION;
+diff --git a/scribus/plugins/import/pdf/importpdf.cpp b/scribus/plugins/import/pdf/importpdf.cpp
+index 11275667e..9b8bfd6f2 100644
+--- a/scribus/plugins/import/pdf/importpdf.cpp
++++ b/scribus/plugins/import/pdf/importpdf.cpp
+@@ -24,9 +24,9 @@ for which a new license (GPL+exception) is in place.
+ #include <poppler/PageTransition.h>
+ #include <poppler/ViewerPreferences.h>
+ #include <poppler/poppler-config.h>
+-#include <poppler/cpp/poppler-version.h>
++#include <cpp/poppler-version.h>
+ #include <poppler/SplashOutputDev.h>
+-#include <poppler/splash/SplashBitmap.h>
++#include <splash/SplashBitmap.h>
+ 
+ #include "importpdf.h"
+ #include "importpdfconfig.h"
+@@ -1016,6 +1016,8 @@ QString PdfPlug::UnicodeParsedString(const std::string& s1)
+ {
+ 	if (s1.length() == 0)
+ 		return QString();
++	if (s1.at(0)==0)
++		return QString();
+ 	GBool isUnicode;
+ 	size_t i;
+ 	Unicode u;
+diff --git a/scribus/plugins/import/pdf/importpdfconfig.h b/scribus/plugins/import/pdf/importpdfconfig.h
+index 5a7e0d216..35a86b809 100644
+--- a/scribus/plugins/import/pdf/importpdfconfig.h
++++ b/scribus/plugins/import/pdf/importpdfconfig.h
+@@ -7,7 +7,7 @@ for which a new license (GPL+exception) is in place.
+ #ifndef IMPORTPDFCONFIG_H
+ #define IMPORTPDFCONFIG_H
+ 
+-#include <poppler/cpp/poppler-version.h>
++#include "cpp/poppler-version.h"
+ 
+ #define POPPLER_VERSION_ENCODE(major, minor, micro) (	\
+ 	  ((major) * 10000)				\
+diff --git a/scribus/plugins/import/pdf/slaoutput.cpp b/scribus/plugins/import/pdf/slaoutput.cpp
+index cafef6545..4e4cb43a6 100644
+--- a/scribus/plugins/import/pdf/slaoutput.cpp
++++ b/scribus/plugins/import/pdf/slaoutput.cpp
+@@ -10,7 +10,7 @@ for which a new license (GPL+exception) is in place.
+ #include <poppler/GlobalParams.h>
+ #include <poppler/poppler-config.h>
+ #include <poppler/FileSpec.h>
+-#include <poppler/fofi/FoFiTrueType.h>
++#include <fofi/FoFiTrueType.h>
+ #include <QApplication>
+ #include <QFile>
+ #include "commonstrings.h"
+diff --git a/scribus/plugins/import/pdf/slaoutput.h b/scribus/plugins/import/pdf/slaoutput.h
+index fd698672b..3d3f40ba3 100644
+--- a/scribus/plugins/import/pdf/slaoutput.h
++++ b/scribus/plugins/import/pdf/slaoutput.h
+@@ -47,13 +47,13 @@ for which a new license (GPL+exception) is in place.
+ #include <poppler/Catalog.h>
+ #include <poppler/CharCodeToUnicode.h>
+ #include <poppler/FontEncodingTables.h>
+-#include <poppler/splash/SplashFontFileID.h>
+-#include <poppler/splash/SplashFontFile.h>
+-#include <poppler/splash/SplashFontEngine.h>
+-#include <poppler/splash/SplashFont.h>
+-#include <poppler/splash/SplashMath.h>
+-#include <poppler/splash/SplashPath.h>
+-#include <poppler/splash/SplashGlyphBitmap.h>
++#include <splash/SplashFontFileID.h>
++#include <splash/SplashFontFile.h>
++#include <splash/SplashFontEngine.h>
++#include <splash/SplashFont.h>
++#include <splash/SplashMath.h>
++#include <splash/SplashPath.h>
++#include <splash/SplashGlyphBitmap.h>
+ 
+ //------------------------------------------------------------------------
+ // LinkSubmitData
+diff --git a/scribus/plugins/import/qxp/importqxpplugin.cpp b/scribus/plugins/import/qxp/importqxpplugin.cpp
+index 797d0a178..f233c0d0a 100644
+--- a/scribus/plugins/import/qxp/importqxpplugin.cpp
++++ b/scribus/plugins/import/qxp/importqxpplugin.cpp
+@@ -20,6 +20,8 @@ for which a new license (GPL+exception) is in place.
+ #include "ui/customfdialog.h"
+ #include "ui/scmwmenumanager.h"
+ 
++#pragma comment(lib, "zlib.lib")
++
+ int importqxp_getPluginAPIVersion()
+ {
+ 	return PLUGIN_API_VERSION;
+diff --git a/scribus/plugins/import/xps/importxpsplugin.cpp b/scribus/plugins/import/xps/importxpsplugin.cpp
+index e04e6430f..ba9e4dd90 100644
+--- a/scribus/plugins/import/xps/importxpsplugin.cpp
++++ b/scribus/plugins/import/xps/importxpsplugin.cpp
+@@ -26,6 +26,8 @@ for which a new license (GPL+exception) is in place.
+ #include "ui/customfdialog.h"
+ #include "ui/scmwmenumanager.h"
+ 
++#pragma comment(lib, "zlib.lib")
++
+ int importxps_getPluginAPIVersion()
+ {
+ 	return PLUGIN_API_VERSION;
+diff --git a/scribus/plugins/scriptplugin/cmddoc.cpp b/scribus/plugins/scriptplugin/cmddoc.cpp
+index 258314045..6c6fa6d43 100644
+--- a/scribus/plugins/scriptplugin/cmddoc.cpp
++++ b/scribus/plugins/scriptplugin/cmddoc.cpp
+@@ -470,6 +470,34 @@ PyObject* scribus_applymasterpage(PyObject* /* self */, PyObject* args)
+ 	Py_RETURN_NONE;
+ }
+ 
++#include <QDialog>
++#include <QDialogButtonBox>
++#include <QFormLayout>
++#include <QTextEdit>
++
++PyObject* scribus_messagelinebox(PyObject* /* self */, PyObject* args)
++{
++	char* Name;
++	if (!PyArg_ParseTuple(args, "es", "utf-8", &Name))
++		return nullptr;
++
++	QString text = QString(Name);
++	text = text.replace("<", "&lt;");
++	text = text.replace(">", "&gt;");
++	text = text.replace("\n", "<br/>");
++
++	QDialog* dlg = new QDialog();
++	QFormLayout * lay = new QFormLayout();
++	QTextEdit* line = new QTextEdit();
++	line->setHtml("<body><p>" + text + "</p></body>");
++	lay->addRow(new QLabel("Tu mas XML:"), line);
++	dlg->setLayout(lay);
++	dlg->setWindowTitle("dyn dialog");
++	
++	dlg->show();
++	return PyBool_FromLong(static_cast<long>(true));
++}
++
+ /*! HACK: this removes "warning: 'blah' defined but not used" compiler warnings
+ with header files structure untouched (docstrings are kept near declarations)
+ PV */
+@@ -486,6 +514,7 @@ void cmddocdocwarnings()
+ 	  << scribus_getmasterpage__doc__
+ 	  << scribus_getunit__doc__ 
+ 	  << scribus_havedoc__doc__
++	  << scribus_messagelinebox__doc__
+ 	  << scribus_loadstylesfromfile__doc__
+ 	  << scribus_masterpagenames__doc__ 
+ 	  << scribus_newdoc__doc__ 
+diff --git a/scribus/plugins/scriptplugin/cmddoc.h b/scribus/plugins/scriptplugin/cmddoc.h
+index 656e93b9a..5015f3001 100644
+--- a/scribus/plugins/scriptplugin/cmddoc.h
++++ b/scribus/plugins/scriptplugin/cmddoc.h
+@@ -118,6 +118,16 @@ Returns the quantity of open documents: 0 if none are opened.\n\
+ /** Checks if is a document opened. */
+ PyObject *scribus_havedoc(PyObject * /*self*/);
+ 
++/*! docstring */
++PyDoc_STRVAR(scribus_messagelinebox__doc__,
++    QT_TR_NOOP("messagelinebox() -> void\n\
++\n\
++Returns the quantity of open documents: 0 if none are opened.\n\
++"));
++/** Checks if is a document opened. */
++PyObject* scribus_messagelinebox(PyObject* /*self*/, PyObject* args);
++
++
+ /*! docstring */
+ PyDoc_STRVAR(scribus_opendoc__doc__,
+ QT_TR_NOOP("openDoc(\"name\")\n\
+diff --git a/scribus/plugins/scriptplugin/scriptplugin.cpp b/scribus/plugins/scriptplugin/scriptplugin.cpp
+index 37bfb84ba..c209456e9 100644
+--- a/scribus/plugins/scriptplugin/scriptplugin.cpp
++++ b/scribus/plugins/scriptplugin/scriptplugin.cpp
+@@ -447,6 +447,7 @@ PyMethodDef scribus_methods[] = {
+ 	{const_cast<char*>("mergeTableCells"), scribus_mergetablecells, METH_VARARGS, tr(scribus_mergetablecells__doc__)},
+ 	{const_cast<char*>("messageBox"), (PyCFunction)scribus_messagebox, METH_VARARGS|METH_KEYWORDS, tr(scribus_messagebox__doc__)},
+ 	{const_cast<char*>("messagebarText"), scribus_statusmessage, METH_VARARGS, tr(scribus_statusmessage__doc__)}, // Deprecated
++	{const_cast<char*>("messageLineBox"), scribus_messagelinebox, METH_VARARGS, tr(scribus_messagelinebox__doc__) },
+ 	{const_cast<char*>("moveObject"), scribus_moveobjectrel, METH_VARARGS, tr(scribus_moveobjectrel__doc__)},
+ 	{const_cast<char*>("moveObjectAbs"), scribus_moveobjectabs, METH_VARARGS, tr(scribus_moveobjectabs__doc__)},
+ 	{const_cast<char*>("moveSelectionToBack"), (PyCFunction)scribus_moveselectiontoback, METH_NOARGS, tr(scribus_moveselectiontoback__doc__) },
+diff --git a/scribus/scconfig.h b/scribus/scconfig.h
+index ef7337114..c99f1ca77 100644
+--- a/scribus/scconfig.h
++++ b/scribus/scconfig.h
+@@ -7,6 +7,7 @@ for which a new license (GPL+exception) is in place.
+ #ifndef _SCCONFIG_H
+ #define _SCCONFIG_H
+ 
++#undef HAVE_UNISTD_H
+ /*
+  * IMPORTANT
+  *
+diff --git a/scribus/scimage.h b/scribus/scimage.h
+index 17b897e56..8d8b3f24f 100644
+--- a/scribus/scimage.h
++++ b/scribus/scimage.h
+@@ -12,7 +12,7 @@ for which a new license (GPL+exception) is in place.
+ #include "scimagestructs.h"
+ 
+ #ifdef HAVE_UNISTD_H
+-#include <unistd.h>
++//#include <unistd.h>
+ #endif
+ #include <QImage>
+ #include <QString>
+diff --git a/scribus/scribus.cpp b/scribus/scribus.cpp
+index 1809a011d..7bab59a0d 100644
+--- a/scribus/scribus.cpp
++++ b/scribus/scribus.cpp
+@@ -86,7 +86,7 @@ for which a new license (GPL+exception) is in place.
+ #endif
+ 
+ #ifdef HAVE_UNISTD_H
+-#include <unistd.h>
++//#include <unistd.h>
+ #endif
+ 
+ #include <iostream>
+@@ -1225,6 +1225,10 @@ void ScribusMainWindow::initMenuBar()
+ 	scrMenuMgr->addMenuItemString("tableAdjustFrameToTable", "ItemTable");
+ 	scrMenuMgr->addMenuItemString("tableAdjustTableToFrame", "ItemTable");
+ 
++	scrMenuMgr->createMenu("eAIP", "eAIP");
++	scrMenuMgr->addMenuItemString("Login", "eAIP");
++
++
+ 	//Extra menu
+ 	scrMenuMgr->createMenu("Extras", ActionManager::defaultMenuNameEntryTranslated("Extras"));
+ 	scrMenuMgr->addMenuItemString("extrasHyphenateText", "Extras");
+@@ -1278,6 +1282,10 @@ void ScribusMainWindow::createMenuBar()
+ 	scrMenuMgr->addMenuItemStringsToMenuBar("ItemTable", scrActions);
+ 	scrMenuMgr->addMenuStringToMenuBar("Extras");
+ 	scrMenuMgr->addMenuItemStringsToMenuBar("Extras", scrActions);
++
++	scrMenuMgr->addMenuStringToMenuBar("eAIP");
++	scrMenuMgr->addMenuItemStringsToMenuBar("eAIP", scrActions);
++
+ 	scrMenuMgr->addMenuStringToMenuBar("View");
+ 	scrMenuMgr->addMenuItemStringsToMenuBar("View", scrActions);
+ 	scrMenuMgr->addMenuStringToMenuBar("Windows", true);
+diff --git a/scribus/scribusview.cpp b/scribus/scribusview.cpp
+index f742cb6dc..57cce8f9d 100644
+--- a/scribus/scribusview.cpp
++++ b/scribus/scribusview.cpp
+@@ -52,7 +52,7 @@ for which a new license (GPL+exception) is in place.
+ #include <cstdlib>
+ 
+ #ifdef HAVE_UNISTD_H
+-#include <unistd.h>
++//#include <unistd.h>
+ #endif
+ 
+ #include <QUrl>
+diff --git a/scribus/third_party/zip/zip_p.h b/scribus/third_party/zip/zip_p.h
+index 19e62ad81..982c2b5da 100755
+--- a/scribus/third_party/zip/zip_p.h
++++ b/scribus/third_party/zip/zip_p.h
+@@ -62,7 +62,7 @@ class ZipPrivate : public QObject
+     Q_OBJECT
+ 
+ public:
+-	typedef z_crc_t crc_t;
++	typedef unsigned long crc_t;
+ 	ZipPrivate();
+ 	virtual ~ZipPrivate();
+ 
+diff --git a/scribus/util_ghostscript.cpp b/scribus/util_ghostscript.cpp
+index a0cb2b193..6be80d91b 100644
+--- a/scribus/util_ghostscript.cpp
++++ b/scribus/util_ghostscript.cpp
+@@ -36,7 +36,7 @@ for which a new license (GPL+exception) is in place.
+ #include "scconfig.h"
+ 
+ #ifdef HAVE_UNISTD_H
+-#include <unistd.h>
++//#include <unistd.h>
+ #endif
+ 
+ #if defined(_WIN32)
+diff --git a/win32/msvc2019/Scribus-build-props.props b/win32/msvc2019/Scribus-build-props.props
+index 8eeb7a44b..71c79a83c 100644
+--- a/win32/msvc2019/Scribus-build-props.props
++++ b/win32/msvc2019/Scribus-build-props.props
+@@ -3,15 +3,15 @@
+   <ImportGroup Label="PropertySheets">
+   </ImportGroup>
+   <!-- Import Scribus dependencies (other than Qt) -->
+-  <PropertyGroup Label="UserMacros">
++  <!--PropertyGroup Label="UserMacros">
+ 	<SCRIBUS_LIB_ROOT>F:\Scribus Libs\scribus-1.5.x-libs-msvc2019</SCRIBUS_LIB_ROOT>
+   </PropertyGroup>
+-  <Import Project="$(SCRIBUS_LIB_ROOT)\scribus-lib-paths.props" />
++  <Import Project="$(SCRIBUS_LIB_ROOT)\scribus-lib-paths.props" />-->
+   <!-- Import Qt5 -->
+   <PropertyGroup Label="UserMacros">
+ 	<!-- Qt5 -->
+ 	<QT5_DIR Condition="'$(Platform)' == 'Win32' and '$(PlatformToolset)' == 'v142'"   >F:\Libraries\Qt\5.15.1\msvc2019</QT5_DIR>
+-	<QT5_DIR Condition="'$(Platform)' == 'x64'   and '$(PlatformToolset)' == 'v142'"   >F:\Libraries\Qt\5.15.1\msvc2019_64</QT5_DIR>
++	<QT5_DIR Condition="'$(Platform)' == 'x64'   and '$(PlatformToolset)' == 'v142'"   >C:\Qt\5.15.1\msvc2019_64</QT5_DIR>
+ 	<QT5CORE_LIB Condition="'$(Configuration)' == 'Debug'">Qt5Cored.lib</QT5CORE_LIB>
+ 	<QT5CORE_LIB Condition="'$(Configuration)' == 'Release'">Qt5Core.lib</QT5CORE_LIB>
+ 	<QT5GUI_LIB Condition="'$(Configuration)' == 'Debug'">Qt5Guid.lib</QT5GUI_LIB>
+diff --git a/win32/msvc2019/Scribus.sdf b/win32/msvc2019/Scribus.sdf
+new file mode 100644
+index 000000000..8f17d1c32
+Binary files /dev/null and b/win32/msvc2019/Scribus.sdf differ
+diff --git a/win32/msvc2019/Scribus.v12.suo b/win32/msvc2019/Scribus.v12.suo
+new file mode 100644
+index 000000000..c603885fe
+Binary files /dev/null and b/win32/msvc2019/Scribus.v12.suo differ
+diff --git a/win32/msvc2019/aiimport/aiimport.vcxproj b/win32/msvc2019/aiimport/aiimport.vcxproj
+index 102c0e1db..ff49e7f75 100644
+--- a/win32/msvc2019/aiimport/aiimport.vcxproj
++++ b/win32/msvc2019/aiimport/aiimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importai</TargetName>
++    <IncludePath>C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\zlib;C:\Projects\git\scibus_deps\libtiff;C:\Projects\git\scibus_deps\cairofull\cairo\src;$(IncludePath);C:\Projects\git\scibus_deps\freetype-2.10.4\include;C:\Projects\git\scibus_deps\podofo;C:\Projects\git\scibus_deps\boost_1_60_0</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+@@ -193,7 +195,7 @@
+       <ForcedIncludeFiles>plugins_pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+     </ClCompile>
+     <Link>
+-      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LCMS_LIB);$(PODOFO_LIB);$(ZLIB_LIB);scribus-api.lib;WSock32.Lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LCMS_LIB);$(PODOFO_LIB);$(ZLIB_LIB);scribus-api.lib;WSock32.Lib;cairo.lib;podofo.lib;libtiff.lib;%(AdditionalDependencies)</AdditionalDependencies>
+       <AdditionalLibraryDirectories>$(FREETYPE_LIB_DIR);$(LCMS_LIB_DIR);$(LIBJPEG_LIB_DIR);$(LIBTIFF_LIB_DIR);$(PODOFO_LIB_DIR);$(ZLIB_LIB_DIR);$(QT5_DIR)\lib;$(OutDir)..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <SubSystem>Windows</SubSystem>
+diff --git a/win32/msvc2019/aiimport/aiimport.vcxproj.user b/win32/msvc2019/aiimport/aiimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/aiimport/aiimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/barcodegenerator/barcodegenerator.vcxproj b/win32/msvc2019/barcodegenerator/barcodegenerator.vcxproj
+index b927c8a79..2c5147c41 100644
+--- a/win32/msvc2019/barcodegenerator/barcodegenerator.vcxproj
++++ b/win32/msvc2019/barcodegenerator/barcodegenerator.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>barcodegenerator</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/barcodegenerator/barcodegenerator.vcxproj.user b/win32/msvc2019/barcodegenerator/barcodegenerator.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/barcodegenerator/barcodegenerator.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/cdrimport/cdrimport.vcxproj b/win32/msvc2019/cdrimport/cdrimport.vcxproj
+index 1f84359f6..10add4f21 100644
+--- a/win32/msvc2019/cdrimport/cdrimport.vcxproj
++++ b/win32/msvc2019/cdrimport/cdrimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importcdr</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\librevenge-0.0.4\inc;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/cdrimport/cdrimport.vcxproj.user b/win32/msvc2019/cdrimport/cdrimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/cdrimport/cdrimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/cgmimport/cgmimport.vcxproj b/win32/msvc2019/cgmimport/cgmimport.vcxproj
+index 64a159fc6..14e55dd2d 100644
+--- a/win32/msvc2019/cgmimport/cgmimport.vcxproj
++++ b/win32/msvc2019/cgmimport/cgmimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importcgm</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/cgmimport/cgmimport.vcxproj.user b/win32/msvc2019/cgmimport/cgmimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/cgmimport/cgmimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/colorwheel/colorwheel.vcxproj b/win32/msvc2019/colorwheel/colorwheel.vcxproj
+index 06f1da5f9..15a4575dc 100644
+--- a/win32/msvc2019/colorwheel/colorwheel.vcxproj
++++ b/win32/msvc2019/colorwheel/colorwheel.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>colorwheel</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/colorwheel/colorwheel.vcxproj.user b/win32/msvc2019/colorwheel/colorwheel.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/colorwheel/colorwheel.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/cvgimport/cvgimport.vcxproj b/win32/msvc2019/cvgimport/cvgimport.vcxproj
+index cae7aef87..f8d97104e 100644
+--- a/win32/msvc2019/cvgimport/cvgimport.vcxproj
++++ b/win32/msvc2019/cvgimport/cvgimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importcvg</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/cvgimport/cvgimport.vcxproj.user b/win32/msvc2019/cvgimport/cvgimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/cvgimport/cvgimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/drwimport/drwimport.vcxproj b/win32/msvc2019/drwimport/drwimport.vcxproj
+index 413558b29..c07189410 100644
+--- a/win32/msvc2019/drwimport/drwimport.vcxproj
++++ b/win32/msvc2019/drwimport/drwimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importdrw</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/drwimport/drwimport.vcxproj.user b/win32/msvc2019/drwimport/drwimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/drwimport/drwimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/emfimport/emfimport.vcxproj b/win32/msvc2019/emfimport/emfimport.vcxproj
+index 1329d3594..53c76e992 100644
+--- a/win32/msvc2019/emfimport/emfimport.vcxproj
++++ b/win32/msvc2019/emfimport/emfimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importemf</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/emfimport/emfimport.vcxproj.user b/win32/msvc2019/emfimport/emfimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/emfimport/emfimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/flattenpath/flattenpath.vcxproj b/win32/msvc2019/flattenpath/flattenpath.vcxproj
+index 173de1052..8d8753a2a 100644
+--- a/win32/msvc2019/flattenpath/flattenpath.vcxproj
++++ b/win32/msvc2019/flattenpath/flattenpath.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>flattenpath</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/flattenpath/flattenpath.vcxproj.user b/win32/msvc2019/flattenpath/flattenpath.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/flattenpath/flattenpath.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/fontpreview/fontpreview.vcxproj b/win32/msvc2019/fontpreview/fontpreview.vcxproj
+index 240a36378..912e3ddbd 100644
+--- a/win32/msvc2019/fontpreview/fontpreview.vcxproj
++++ b/win32/msvc2019/fontpreview/fontpreview.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>fontpreview</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/fontpreview/fontpreview.vcxproj.user b/win32/msvc2019/fontpreview/fontpreview.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/fontpreview/fontpreview.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/freehandimport/freehandimport.vcxproj b/win32/msvc2019/freehandimport/freehandimport.vcxproj
+index 3a2af8b1b..e854cc0df 100644
+--- a/win32/msvc2019/freehandimport/freehandimport.vcxproj
++++ b/win32/msvc2019/freehandimport/freehandimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importfh</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\librevenge-0.0.4\inc;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/freehandimport/freehandimport.vcxproj.user b/win32/msvc2019/freehandimport/freehandimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/freehandimport/freehandimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-csvim/gettext-csvim.vcxproj b/win32/msvc2019/gettext-csvim/gettext-csvim.vcxproj
+index d0e6b63f1..168474615 100644
+--- a/win32/msvc2019/gettext-csvim/gettext-csvim.vcxproj
++++ b/win32/msvc2019/gettext-csvim/gettext-csvim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-csvim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-csvim/gettext-csvim.vcxproj.user b/win32/msvc2019/gettext-csvim/gettext-csvim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-csvim/gettext-csvim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-docim/gettext-docim.vcxproj b/win32/msvc2019/gettext-docim/gettext-docim.vcxproj
+index 6b9928e83..3a9b40e95 100644
+--- a/win32/msvc2019/gettext-docim/gettext-docim.vcxproj
++++ b/win32/msvc2019/gettext-docim/gettext-docim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-docim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-docim/gettext-docim.vcxproj.user b/win32/msvc2019/gettext-docim/gettext-docim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-docim/gettext-docim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-docxim/gettext-docxim.vcxproj b/win32/msvc2019/gettext-docxim/gettext-docxim.vcxproj
+index 0fe06df01..e34838350 100644
+--- a/win32/msvc2019/gettext-docxim/gettext-docxim.vcxproj
++++ b/win32/msvc2019/gettext-docxim/gettext-docxim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-docxim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-docxim/gettext-docxim.vcxproj.user b/win32/msvc2019/gettext-docxim/gettext-docxim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-docxim/gettext-docxim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-htmlim/gettext-htmlim.vcxproj b/win32/msvc2019/gettext-htmlim/gettext-htmlim.vcxproj
+index 1310b593b..4f0334613 100644
+--- a/win32/msvc2019/gettext-htmlim/gettext-htmlim.vcxproj
++++ b/win32/msvc2019/gettext-htmlim/gettext-htmlim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-htmlim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\libxml2-2.9.10\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-htmlim/gettext-htmlim.vcxproj.user b/win32/msvc2019/gettext-htmlim/gettext-htmlim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-htmlim/gettext-htmlim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-markdownim/gettext-markdownim.vcxproj b/win32/msvc2019/gettext-markdownim/gettext-markdownim.vcxproj
+index 6805def59..bfcef0c27 100644
+--- a/win32/msvc2019/gettext-markdownim/gettext-markdownim.vcxproj
++++ b/win32/msvc2019/gettext-markdownim/gettext-markdownim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-markdownim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-markdownim/gettext-markdownim.vcxproj.user b/win32/msvc2019/gettext-markdownim/gettext-markdownim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-markdownim/gettext-markdownim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-odtim/gettext-odtim.vcxproj b/win32/msvc2019/gettext-odtim/gettext-odtim.vcxproj
+index 0bd0bcd7d..92b478dcb 100644
+--- a/win32/msvc2019/gettext-odtim/gettext-odtim.vcxproj
++++ b/win32/msvc2019/gettext-odtim/gettext-odtim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-odtim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\libxml2-2.9.10\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-odtim/gettext-odtim.vcxproj.user b/win32/msvc2019/gettext-odtim/gettext-odtim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-odtim/gettext-odtim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-pdbim/gettext-pdbim.vcxproj b/win32/msvc2019/gettext-pdbim/gettext-pdbim.vcxproj
+index 22a2a1c31..c58fe4031 100644
+--- a/win32/msvc2019/gettext-pdbim/gettext-pdbim.vcxproj
++++ b/win32/msvc2019/gettext-pdbim/gettext-pdbim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-pdbim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-pdbim/gettext-pdbim.vcxproj.user b/win32/msvc2019/gettext-pdbim/gettext-pdbim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-pdbim/gettext-pdbim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-rtfim/gettext-rtfim.vcxproj b/win32/msvc2019/gettext-rtfim/gettext-rtfim.vcxproj
+index 2ad668271..547d6aee3 100644
+--- a/win32/msvc2019/gettext-rtfim/gettext-rtfim.vcxproj
++++ b/win32/msvc2019/gettext-rtfim/gettext-rtfim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-rtfim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-rtfim/gettext-rtfim.vcxproj.user b/win32/msvc2019/gettext-rtfim/gettext-rtfim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-rtfim/gettext-rtfim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-sxwim/gettext-sxwim.vcxproj b/win32/msvc2019/gettext-sxwim/gettext-sxwim.vcxproj
+index a69c571e3..f97f50659 100644
+--- a/win32/msvc2019/gettext-sxwim/gettext-sxwim.vcxproj
++++ b/win32/msvc2019/gettext-sxwim/gettext-sxwim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-sxwim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\libxml2-2.9.10\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-sxwim/gettext-sxwim.vcxproj.user b/win32/msvc2019/gettext-sxwim/gettext-sxwim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-sxwim/gettext-sxwim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-textfilter/gettext-textfilter.vcxproj b/win32/msvc2019/gettext-textfilter/gettext-textfilter.vcxproj
+index d986dd4ca..57f8c28ff 100644
+--- a/win32/msvc2019/gettext-textfilter/gettext-textfilter.vcxproj
++++ b/win32/msvc2019/gettext-textfilter/gettext-textfilter.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-textfilter</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include;C:\Projects\git\scibus_deps\cairofull\cairo\src</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+@@ -193,7 +195,7 @@
+       <ForcedIncludeFiles>plugins_pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+     </ClCompile>
+     <Link>
+-      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LCMS_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LIBXML2_LIB);scribus-api.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LCMS_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LIBXML2_LIB);scribus-api.lib;cairo.lib;%(AdditionalDependencies)</AdditionalDependencies>
+       <AdditionalLibraryDirectories>$(LCMS_LIB_DIR);$(FREETYPE_LIB_DIR);$(LIBJPEG_LIB_DIR);$(LIBTIFF_LIB_DIR);$(LIBXML2_LIB_DIR);$(QT5_DIR)\lib;$(OutDir)..\..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <SubSystem>Windows</SubSystem>
+diff --git a/win32/msvc2019/gettext-textfilter/gettext-textfilter.vcxproj.user b/win32/msvc2019/gettext-textfilter/gettext-textfilter.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-textfilter/gettext-textfilter.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-txtim/gettext-txtim.vcxproj b/win32/msvc2019/gettext-txtim/gettext-txtim.vcxproj
+index dc3d96992..5cd51eab2 100644
+--- a/win32/msvc2019/gettext-txtim/gettext-txtim.vcxproj
++++ b/win32/msvc2019/gettext-txtim/gettext-txtim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-txtim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-txtim/gettext-txtim.vcxproj.user b/win32/msvc2019/gettext-txtim/gettext-txtim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-txtim/gettext-txtim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/gettext-xtgim/gettext-xtgim.vcxproj b/win32/msvc2019/gettext-xtgim/gettext-xtgim.vcxproj
+index 9b52c699f..f8e28bafe 100644
+--- a/win32/msvc2019/gettext-xtgim/gettext-xtgim.vcxproj
++++ b/win32/msvc2019/gettext-xtgim/gettext-xtgim.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>gettext-xtgim</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/gettext-xtgim/gettext-xtgim.vcxproj.user b/win32/msvc2019/gettext-xtgim/gettext-xtgim.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/gettext-xtgim/gettext-xtgim.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/hunspellcheck/hunspellcheck.vcxproj b/win32/msvc2019/hunspellcheck/hunspellcheck.vcxproj
+index fd6a74cd3..058f79e31 100644
+--- a/win32/msvc2019/hunspellcheck/hunspellcheck.vcxproj
++++ b/win32/msvc2019/hunspellcheck/hunspellcheck.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>hunspellplugin</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/hunspellcheck/hunspellcheck.vcxproj.user b/win32/msvc2019/hunspellcheck/hunspellcheck.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/hunspellcheck/hunspellcheck.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/idmlimport/idmlimport.vcxproj b/win32/msvc2019/idmlimport/idmlimport.vcxproj
+index f64260536..94fa0803e 100644
+--- a/win32/msvc2019/idmlimport/idmlimport.vcxproj
++++ b/win32/msvc2019/idmlimport/idmlimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importidml</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/idmlimport/idmlimport.vcxproj.user b/win32/msvc2019/idmlimport/idmlimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/idmlimport/idmlimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/lenseffects/lenseffects.vcxproj b/win32/msvc2019/lenseffects/lenseffects.vcxproj
+index 8ac6b3e75..af8033b24 100644
+--- a/win32/msvc2019/lenseffects/lenseffects.vcxproj
++++ b/win32/msvc2019/lenseffects/lenseffects.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>lenseffects</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/lenseffects/lenseffects.vcxproj.user b/win32/msvc2019/lenseffects/lenseffects.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/lenseffects/lenseffects.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/meshdistortion/meshdistortion.vcxproj b/win32/msvc2019/meshdistortion/meshdistortion.vcxproj
+index 337ed9afc..4004785c6 100644
+--- a/win32/msvc2019/meshdistortion/meshdistortion.vcxproj
++++ b/win32/msvc2019/meshdistortion/meshdistortion.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>meshdistortion</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\boost_1_60_0;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/meshdistortion/meshdistortion.vcxproj.user b/win32/msvc2019/meshdistortion/meshdistortion.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/meshdistortion/meshdistortion.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/odgimport/odgimport.vcxproj b/win32/msvc2019/odgimport/odgimport.vcxproj
+index fe3e6e4f9..84992d90c 100644
+--- a/win32/msvc2019/odgimport/odgimport.vcxproj
++++ b/win32/msvc2019/odgimport/odgimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importodg</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/odgimport/odgimport.vcxproj.user b/win32/msvc2019/odgimport/odgimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/odgimport/odgimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/oodrawimport/oodrawimport.vcxproj b/win32/msvc2019/oodrawimport/oodrawimport.vcxproj
+index 6d3b17d84..2fc915a94 100644
+--- a/win32/msvc2019/oodrawimport/oodrawimport.vcxproj
++++ b/win32/msvc2019/oodrawimport/oodrawimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>oodrawimp</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/oodrawimport/oodrawimport.vcxproj.user b/win32/msvc2019/oodrawimport/oodrawimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/oodrawimport/oodrawimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pagemakerimport/pagemakerimport.vcxproj b/win32/msvc2019/pagemakerimport/pagemakerimport.vcxproj
+index 9a782d2a5..8c18c6ab6 100644
+--- a/win32/msvc2019/pagemakerimport/pagemakerimport.vcxproj
++++ b/win32/msvc2019/pagemakerimport/pagemakerimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importpm</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\librevenge-0.0.4\inc;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/pagemakerimport/pagemakerimport.vcxproj.user b/win32/msvc2019/pagemakerimport/pagemakerimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pagemakerimport/pagemakerimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pagesimport/pagesimport.vcxproj b/win32/msvc2019/pagesimport/pagesimport.vcxproj
+index 8d23e2909..fa7c333ee 100644
+--- a/win32/msvc2019/pagesimport/pagesimport.vcxproj
++++ b/win32/msvc2019/pagesimport/pagesimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importpages</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/pagesimport/pagesimport.vcxproj.user b/win32/msvc2019/pagesimport/pagesimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pagesimport/pagesimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pathalongpath/pathalongpath.vcxproj b/win32/msvc2019/pathalongpath/pathalongpath.vcxproj
+index 39f4c65fb..4b5ba28fa 100644
+--- a/win32/msvc2019/pathalongpath/pathalongpath.vcxproj
++++ b/win32/msvc2019/pathalongpath/pathalongpath.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>pathalongpath</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\boost_1_60_0;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/pathalongpath/pathalongpath.vcxproj.user b/win32/msvc2019/pathalongpath/pathalongpath.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pathalongpath/pathalongpath.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pathconnect/pathconnect.vcxproj b/win32/msvc2019/pathconnect/pathconnect.vcxproj
+index 81761b71e..1c0190345 100644
+--- a/win32/msvc2019/pathconnect/pathconnect.vcxproj
++++ b/win32/msvc2019/pathconnect/pathconnect.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>pathconnect</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/pathconnect/pathconnect.vcxproj.user b/win32/msvc2019/pathconnect/pathconnect.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pathconnect/pathconnect.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pathcut/pathcut.vcxproj b/win32/msvc2019/pathcut/pathcut.vcxproj
+index d3663a257..05819a8e4 100644
+--- a/win32/msvc2019/pathcut/pathcut.vcxproj
++++ b/win32/msvc2019/pathcut/pathcut.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>pathcut</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/pathcut/pathcut.vcxproj.user b/win32/msvc2019/pathcut/pathcut.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pathcut/pathcut.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pathfinder/pathfinder.vcxproj b/win32/msvc2019/pathfinder/pathfinder.vcxproj
+index 17dddc827..e2abcb231 100644
+--- a/win32/msvc2019/pathfinder/pathfinder.vcxproj
++++ b/win32/msvc2019/pathfinder/pathfinder.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>pathfinder</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/pathfinder/pathfinder.vcxproj.user b/win32/msvc2019/pathfinder/pathfinder.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pathfinder/pathfinder.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pathstroker/pathstroker.vcxproj b/win32/msvc2019/pathstroker/pathstroker.vcxproj
+index c074d1085..b5955fd83 100644
+--- a/win32/msvc2019/pathstroker/pathstroker.vcxproj
++++ b/win32/msvc2019/pathstroker/pathstroker.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>pathstroker</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/pathstroker/pathstroker.vcxproj.user b/win32/msvc2019/pathstroker/pathstroker.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pathstroker/pathstroker.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pctimport/pctimport.vcxproj b/win32/msvc2019/pctimport/pctimport.vcxproj
+index 3d4dc80f5..c83f4d04f 100644
+--- a/win32/msvc2019/pctimport/pctimport.vcxproj
++++ b/win32/msvc2019/pctimport/pctimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importpct</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/pctimport/pctimport.vcxproj.user b/win32/msvc2019/pctimport/pctimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pctimport/pctimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pdfimport/pdfimport.vcxproj b/win32/msvc2019/pdfimport/pdfimport.vcxproj
+index a56ff798c..e3e303143 100644
+--- a/win32/msvc2019/pdfimport/pdfimport.vcxproj
++++ b/win32/msvc2019/pdfimport/pdfimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importpdf</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\poppler;C:\Projects\git\scibus_deps\libtiff;C:\Projects\git\scibus_deps\jpeglib;C:\Projects\git\scibus_deps\libpng-1.2.37-src;C:\Projects\git\scibus_deps\freetype-2.10.4\include;C:\Projects\git\scibus_deps\poppler\poppler</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+@@ -193,7 +195,7 @@
+       <ForcedIncludeFiles>plugins_pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+     </ClCompile>
+     <Link>
+-      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LCMS_LIB);$(POPPLER_LIB);$(ZLIB_LIB);scribus-api.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LCMS_LIB);$(POPPLER_LIB);$(ZLIB_LIB);scribus-api.lib;libtiff.lib;poppler.lib;libpng.lib;jpeglib.lib;freetype.lib;zlib.lib;lcms2_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+       <AdditionalLibraryDirectories>$(FREETYPE_LIB_DIR);$(LCMS_LIB_DIR);$(LIBJPEG_LIB_DIR);$(LIBTIFF_LIB_DIR);$(POPPLER_LIB_DIR);$(QT5_DIR)\lib;$(ZLIB_LIB_DIR);$(OutDir)..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <SubSystem>Windows</SubSystem>
+diff --git a/win32/msvc2019/pdfimport/pdfimport.vcxproj.user b/win32/msvc2019/pdfimport/pdfimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pdfimport/pdfimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/picturebrowser/picturebrowser.vcxproj b/win32/msvc2019/picturebrowser/picturebrowser.vcxproj
+index f632b4a3f..c416f6370 100644
+--- a/win32/msvc2019/picturebrowser/picturebrowser.vcxproj
++++ b/win32/msvc2019/picturebrowser/picturebrowser.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>picturebrowser</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/picturebrowser/picturebrowser.vcxproj.user b/win32/msvc2019/picturebrowser/picturebrowser.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/picturebrowser/picturebrowser.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pixmapexport/pixmapexport.vcxproj b/win32/msvc2019/pixmapexport/pixmapexport.vcxproj
+index f81d035b0..61a2ecfd3 100644
+--- a/win32/msvc2019/pixmapexport/pixmapexport.vcxproj
++++ b/win32/msvc2019/pixmapexport/pixmapexport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>scribusexportpixmap</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/pixmapexport/pixmapexport.vcxproj.user b/win32/msvc2019/pixmapexport/pixmapexport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pixmapexport/pixmapexport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/pubimport/pubimport.vcxproj b/win32/msvc2019/pubimport/pubimport.vcxproj
+index 2d3ee29ca..515a069c1 100644
+--- a/win32/msvc2019/pubimport/pubimport.vcxproj
++++ b/win32/msvc2019/pubimport/pubimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importpub</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\librevenge-0.0.4\inc;C:\Projects\git\scibus_deps\freetype-2.10.4\include;C:\Projects\git\scibus_deps\cairofull\cairo\src</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+@@ -193,7 +195,7 @@
+       <ForcedIncludeFiles>plugins_pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+     </ClCompile>
+     <Link>
+-      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(ICU_LIB);$(LCMS_LIB);$(LIBJPEG_LIB);$(LIBMSPUB_LIB);$(LIBREVENGE_LIB);$(LIBREVENGE_GENERATORS_LIB);$(LIBREVENGE_STREAM_LIB);$(LIBTIFF_LIB);$(ZLIB_LIB);scribus-api.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(ICU_LIB);$(LCMS_LIB);$(LIBJPEG_LIB);$(LIBMSPUB_LIB);$(LIBREVENGE_LIB);$(LIBREVENGE_GENERATORS_LIB);$(LIBREVENGE_STREAM_LIB);$(LIBTIFF_LIB);$(ZLIB_LIB);scribus-api.lib;cairo.lib;%(AdditionalDependencies)</AdditionalDependencies>
+       <AdditionalLibraryDirectories>$(FREETYPE_LIB_DIR);$(ICU_LIB_DIR);$(LCMS_LIB_DIR);$(LIBJPEG_LIB_DIR);$(LIBMSPUB_LIB_DIR);$(LIBREVENGE_LIB_DIR);$(LIBTIFF_LIB_DIR);$(ZLIB_LIB_DIR);$(QT5_DIR)\lib;$(OutDir)..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <SubSystem>Windows</SubSystem>
+diff --git a/win32/msvc2019/pubimport/pubimport.vcxproj.user b/win32/msvc2019/pubimport/pubimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/pubimport/pubimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/qxpimport/qxpimport.vcxproj b/win32/msvc2019/qxpimport/qxpimport.vcxproj
+index c90a18d4e..923405aa3 100644
+--- a/win32/msvc2019/qxpimport/qxpimport.vcxproj
++++ b/win32/msvc2019/qxpimport/qxpimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importqxp</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\librevenge-0.0.4\inc;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/qxpimport/qxpimport.vcxproj.user b/win32/msvc2019/qxpimport/qxpimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/qxpimport/qxpimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/saveastemplate/saveastemplate.vcxproj b/win32/msvc2019/saveastemplate/saveastemplate.vcxproj
+index 466aba2b8..9c5c00932 100644
+--- a/win32/msvc2019/saveastemplate/saveastemplate.vcxproj
++++ b/win32/msvc2019/saveastemplate/saveastemplate.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>saveastemplateplugin</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/saveastemplate/saveastemplate.vcxproj.user b/win32/msvc2019/saveastemplate/saveastemplate.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/saveastemplate/saveastemplate.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus-lib2geom/scribus-lib2geom.vcxproj b/win32/msvc2019/scribus-lib2geom/scribus-lib2geom.vcxproj
+index efce3d0c9..5eac5ff8d 100644
+--- a/win32/msvc2019/scribus-lib2geom/scribus-lib2geom.vcxproj
++++ b/win32/msvc2019/scribus-lib2geom/scribus-lib2geom.vcxproj
+@@ -90,6 +90,8 @@
+     <OutDir>..\..\..\..\Scribus-builds\Scribus-$(Configuration)-$(Platform)-$(PlatformToolset)\</OutDir>
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <TargetName>scribus-lib2geom</TargetName>
++    <IncludePath>C:\Projects\git\scibus_deps\boost_1_60_0;$(IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus-lib2geom/scribus-lib2geom.vcxproj.user b/win32/msvc2019/scribus-lib2geom/scribus-lib2geom.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scribus-lib2geom/scribus-lib2geom.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus-main/Scribus.vcxproj b/win32/msvc2019/scribus-main/Scribus.vcxproj
+index 377e7909d..1d8692844 100644
+--- a/win32/msvc2019/scribus-main/Scribus.vcxproj
++++ b/win32/msvc2019/scribus-main/Scribus.vcxproj
+@@ -95,6 +95,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>Scribus</TargetName>
++    <IncludePath>C:\Projects\git\scibus_deps\zlib;C:\Projects\git\scibus_deps\boost_1_60_0;C:\Projects\git\scibus_deps\freetype-2.10.4\include;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\jpeglib;C:\Projects\git\scibus_deps\libpng-1.2.37-src;C:\Projects\git\scibus_deps\libtiff;C:\Projects\git\scibus_deps\lcms2-2.11\include;C:\Projects\git\scibus_deps\harfbuzz\include;C:\Projects\git\scibus_deps\cairo-1.17.2+f93fc72c03e\src;C:\Projects\git\scibus_deps\podofo;C:\Projects\git\scibus_deps\cairofull\cairo\src;$(IncludePath)</IncludePath>
++    <LibraryPath>C:\Projects\git\scibus_deps\libs;$(LibraryPath);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus-main/Scribus.vcxproj.user b/win32/msvc2019/scribus-main/Scribus.vcxproj.user
+new file mode 100644
+index 000000000..fadb21aeb
+--- /dev/null
++++ b/win32/msvc2019/scribus-main/Scribus.vcxproj.user
+@@ -0,0 +1,8 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
++    <LocalDebuggerCommandArguments>
++    </LocalDebuggerCommandArguments>
++    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
++  </PropertyGroup>
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus-pgf/scribus-pgf.vcxproj b/win32/msvc2019/scribus-pgf/scribus-pgf.vcxproj
+index 7d8a8f4a1..88edafee0 100644
+--- a/win32/msvc2019/scribus-pgf/scribus-pgf.vcxproj
++++ b/win32/msvc2019/scribus-pgf/scribus-pgf.vcxproj
+@@ -90,6 +90,8 @@
+     <OutDir>..\..\..\..\Scribus-builds\Scribus-$(Configuration)-$(Platform)-$(PlatformToolset)\</OutDir>
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <TargetName>scribus-pgf</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus-pgf/scribus-pgf.vcxproj.user b/win32/msvc2019/scribus-pgf/scribus-pgf.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scribus-pgf/scribus-pgf.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus-rtf/scribus-rtf.vcxproj b/win32/msvc2019/scribus-rtf/scribus-rtf.vcxproj
+index facf3a79a..b4d9b20f1 100644
+--- a/win32/msvc2019/scribus-rtf/scribus-rtf.vcxproj
++++ b/win32/msvc2019/scribus-rtf/scribus-rtf.vcxproj
+@@ -171,6 +171,8 @@
+     <OutDir>..\..\..\..\Scribus-builds\Scribus-$(Configuration)-$(Platform)-$(PlatformToolset)\</OutDir>
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <TargetName>scribus-rtf</TargetName>
++    <IncludePath>C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include;$(IncludePath);C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus-rtf/scribus-rtf.vcxproj.user b/win32/msvc2019/scribus-rtf/scribus-rtf.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scribus-rtf/scribus-rtf.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus-wpg/scribus-wpg.vcxproj b/win32/msvc2019/scribus-wpg/scribus-wpg.vcxproj
+index ab14dd387..52ed50b5f 100644
+--- a/win32/msvc2019/scribus-wpg/scribus-wpg.vcxproj
++++ b/win32/msvc2019/scribus-wpg/scribus-wpg.vcxproj
+@@ -90,6 +90,8 @@
+     <OutDir>..\..\..\..\Scribus-builds\Scribus-$(Configuration)-$(Platform)-$(PlatformToolset)\</OutDir>
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <TargetName>scribus-wpg</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus-wpg/scribus-wpg.vcxproj.user b/win32/msvc2019/scribus-wpg/scribus-wpg.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scribus-wpg/scribus-wpg.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus-zip/scribus-zip.vcxproj b/win32/msvc2019/scribus-zip/scribus-zip.vcxproj
+index 7c9d01abd..0578a7fb5 100644
+--- a/win32/msvc2019/scribus-zip/scribus-zip.vcxproj
++++ b/win32/msvc2019/scribus-zip/scribus-zip.vcxproj
+@@ -105,6 +105,8 @@
+     <OutDir>..\..\..\..\Scribus-builds\Scribus-$(Configuration)-$(Platform)-$(PlatformToolset)\</OutDir>
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <TargetName>scribus-zip</TargetName>
++    <IncludePath>C:\Projects\git\scibus_deps\zlib;$(IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus-zip/scribus-zip.vcxproj.user b/win32/msvc2019/scribus-zip/scribus-zip.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scribus-zip/scribus-zip.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus12format/scribus12format.vcxproj b/win32/msvc2019/scribus12format/scribus12format.vcxproj
+index 6ec06e499..eca75aff8 100644
+--- a/win32/msvc2019/scribus12format/scribus12format.vcxproj
++++ b/win32/msvc2019/scribus12format/scribus12format.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>scribus12format</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus12format/scribus12format.vcxproj.user b/win32/msvc2019/scribus12format/scribus12format.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scribus12format/scribus12format.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus134format/scribus134format.vcxproj b/win32/msvc2019/scribus134format/scribus134format.vcxproj
+index 10d96d1e6..4e8b0d7fc 100644
+--- a/win32/msvc2019/scribus134format/scribus134format.vcxproj
++++ b/win32/msvc2019/scribus134format/scribus134format.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>scribus134format</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus134format/scribus134format.vcxproj.user b/win32/msvc2019/scribus134format/scribus134format.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scribus134format/scribus134format.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus13format/scribus13format.vcxproj b/win32/msvc2019/scribus13format/scribus13format.vcxproj
+index 5e25909b6..be33379fc 100644
+--- a/win32/msvc2019/scribus13format/scribus13format.vcxproj
++++ b/win32/msvc2019/scribus13format/scribus13format.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>scribus13format</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus13format/scribus13format.vcxproj.user b/win32/msvc2019/scribus13format/scribus13format.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scribus13format/scribus13format.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scribus150format/scribus150format.vcxproj b/win32/msvc2019/scribus150format/scribus150format.vcxproj
+index 6afa1f16a..31c9499ad 100644
+--- a/win32/msvc2019/scribus150format/scribus150format.vcxproj
++++ b/win32/msvc2019/scribus150format/scribus150format.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>scribus150format</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/scribus150format/scribus150format.vcxproj.user b/win32/msvc2019/scribus150format/scribus150format.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scribus150format/scribus150format.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/scriptplugin/scriptplugin.vcxproj b/win32/msvc2019/scriptplugin/scriptplugin.vcxproj
+index 88007f34e..f98d7a05a 100644
+--- a/win32/msvc2019/scriptplugin/scriptplugin.vcxproj
++++ b/win32/msvc2019/scriptplugin/scriptplugin.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>scriptplugin</TargetName>
++    <IncludePath>C:\Projects\git\scibus_deps\zlib;$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Program Files %28x86%29\Microsoft Visual Studio\2019\Community\Common7\IDE\Extensions\Microsoft\Python\Miniconda\Miniconda3-x64\include;C:\Projects\git\scibus_deps\cairo-1.17.2+f93fc72c03e\src;C:\Projects\git\scibus_deps\freetype-2.10.4\include;C:\Projects\git\scibus_deps\cairofull\cairo\src</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+@@ -193,7 +195,7 @@
+       <ForcedIncludeFiles>plugins_pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+     </ClCompile>
+     <Link>
+-      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LCMS_LIB);$(PYTHON3_LIB);scribus-api.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5WIDGETS_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LCMS_LIB);$(PYTHON3_LIB);scribus-api.lib;cairo.lib;%(AdditionalDependencies)</AdditionalDependencies>
+       <AdditionalLibraryDirectories>$(LCMS_LIB_DIR);$(FREETYPE_LIB_DIR);$(LIBJPEG_LIB_DIR);$(LIBTIFF_LIB_DIR);$(PYTHON3_LIB_DIR)s;$(QT5_DIR)\lib;$(OutDir)..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <SubSystem>Windows</SubSystem>
+diff --git a/win32/msvc2019/scriptplugin/scriptplugin.vcxproj.user b/win32/msvc2019/scriptplugin/scriptplugin.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/scriptplugin/scriptplugin.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/shapeimport/shapeimport.vcxproj b/win32/msvc2019/shapeimport/shapeimport.vcxproj
+index 4b44ce7d5..0d15db345 100644
+--- a/win32/msvc2019/shapeimport/shapeimport.vcxproj
++++ b/win32/msvc2019/shapeimport/shapeimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importshape</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/shapeimport/shapeimport.vcxproj.user b/win32/msvc2019/shapeimport/shapeimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/shapeimport/shapeimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/shapeplugin/shapeplugin.vcxproj b/win32/msvc2019/shapeplugin/shapeplugin.vcxproj
+index d33f5be67..6f04694ce 100644
+--- a/win32/msvc2019/shapeplugin/shapeplugin.vcxproj
++++ b/win32/msvc2019/shapeplugin/shapeplugin.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>shapeplugin</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/shapeplugin/shapeplugin.vcxproj.user b/win32/msvc2019/shapeplugin/shapeplugin.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/shapeplugin/shapeplugin.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/shortwords/shortwords.vcxproj b/win32/msvc2019/shortwords/shortwords.vcxproj
+index 5619a1a94..bba66871d 100644
+--- a/win32/msvc2019/shortwords/shortwords.vcxproj
++++ b/win32/msvc2019/shortwords/shortwords.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>scribusshortwords</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/shortwords/shortwords.vcxproj.user b/win32/msvc2019/shortwords/shortwords.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/shortwords/shortwords.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/smlimport/smlimport.vcxproj b/win32/msvc2019/smlimport/smlimport.vcxproj
+index 11f049078..0a4d3f50a 100644
+--- a/win32/msvc2019/smlimport/smlimport.vcxproj
++++ b/win32/msvc2019/smlimport/smlimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importsml</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/smlimport/smlimport.vcxproj.user b/win32/msvc2019/smlimport/smlimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/smlimport/smlimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/smoothpath/smoothpath.vcxproj b/win32/msvc2019/smoothpath/smoothpath.vcxproj
+index 3426e0f8a..952c3164e 100644
+--- a/win32/msvc2019/smoothpath/smoothpath.vcxproj
++++ b/win32/msvc2019/smoothpath/smoothpath.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>smoothpath</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/smoothpath/smoothpath.vcxproj.user b/win32/msvc2019/smoothpath/smoothpath.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/smoothpath/smoothpath.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/subdivide/subdivide.vcxproj b/win32/msvc2019/subdivide/subdivide.vcxproj
+index ef8ca2571..79851ed13 100644
+--- a/win32/msvc2019/subdivide/subdivide.vcxproj
++++ b/win32/msvc2019/subdivide/subdivide.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>subdivide</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include;C:\Projects\git\scibus_deps\cairofull\cairo\src</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+@@ -187,7 +189,7 @@
+       <DisableSpecificWarnings>4190;4251;4267;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+     </ClCompile>
+     <Link>
+-      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LCMS_LIB);scribus-api.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies>$(QT5CORE_LIB);$(QT5GUI_LIB);$(QT5XML_LIB);$(FREETYPE_LIB);$(LIBJPEG_LIB);$(LIBTIFF_LIB);$(LCMS_LIB);scribus-api.lib;cairo.lib;%(AdditionalDependencies)</AdditionalDependencies>
+       <AdditionalLibraryDirectories>$(LCMS_LIB_DIR);$(FREETYPE_LIB_DIR);$(LIBJPEG_LIB_DIR);$(LIBTIFF_LIB_DIR);$(QT5_DIR)\lib;$(OutDir)..;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <SubSystem>Windows</SubSystem>
+diff --git a/win32/msvc2019/subdivide/subdivide.vcxproj.user b/win32/msvc2019/subdivide/subdivide.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/subdivide/subdivide.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/svgexport/svgexport.vcxproj b/win32/msvc2019/svgexport/svgexport.vcxproj
+index 6619732e1..ca27b7d7e 100644
+--- a/win32/msvc2019/svgexport/svgexport.vcxproj
++++ b/win32/msvc2019/svgexport/svgexport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>svgexplugin</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/svgexport/svgexport.vcxproj.user b/win32/msvc2019/svgexport/svgexport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/svgexport/svgexport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/svgimport/svgimport.vcxproj b/win32/msvc2019/svgimport/svgimport.vcxproj
+index 2ca28ee92..78da23990 100644
+--- a/win32/msvc2019/svgimport/svgimport.vcxproj
++++ b/win32/msvc2019/svgimport/svgimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>svgimplugin</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/svgimport/svgimport.vcxproj.user b/win32/msvc2019/svgimport/svgimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/svgimport/svgimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/svmimport/svmimport.vcxproj b/win32/msvc2019/svmimport/svmimport.vcxproj
+index 6f417998a..ac36329bb 100644
+--- a/win32/msvc2019/svmimport/svmimport.vcxproj
++++ b/win32/msvc2019/svmimport/svmimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importsvm</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/svmimport/svmimport.vcxproj.user b/win32/msvc2019/svmimport/svmimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/svmimport/svmimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/uniconvimport/uniconvimport.vcxproj b/win32/msvc2019/uniconvimport/uniconvimport.vcxproj
+index 192c570ad..faefdbe6e 100644
+--- a/win32/msvc2019/uniconvimport/uniconvimport.vcxproj
++++ b/win32/msvc2019/uniconvimport/uniconvimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>uniconvertorplugin</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/uniconvimport/uniconvimport.vcxproj.user b/win32/msvc2019/uniconvimport/uniconvimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/uniconvimport/uniconvimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/visioimport/visioimport.vcxproj b/win32/msvc2019/visioimport/visioimport.vcxproj
+index 2e625d0f9..8c54b39c4 100644
+--- a/win32/msvc2019/visioimport/visioimport.vcxproj
++++ b/win32/msvc2019/visioimport/visioimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importvsd</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\librevenge-0.0.4\inc;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/visioimport/visioimport.vcxproj.user b/win32/msvc2019/visioimport/visioimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/visioimport/visioimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/vivaimport/vivaimport.vcxproj b/win32/msvc2019/vivaimport/vivaimport.vcxproj
+index 223245d86..fe1d6b54c 100644
+--- a/win32/msvc2019/vivaimport/vivaimport.vcxproj
++++ b/win32/msvc2019/vivaimport/vivaimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importviva</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/vivaimport/vivaimport.vcxproj.user b/win32/msvc2019/vivaimport/vivaimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/vivaimport/vivaimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/wmfimport/wmfimport.vcxproj b/win32/msvc2019/wmfimport/wmfimport.vcxproj
+index 25f517b3e..70b57ba2c 100644
+--- a/win32/msvc2019/wmfimport/wmfimport.vcxproj
++++ b/win32/msvc2019/wmfimport/wmfimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>wmfimplugin</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/wmfimport/wmfimport.vcxproj.user b/win32/msvc2019/wmfimport/wmfimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/wmfimport/wmfimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/wpgimport/wpgimport.vcxproj b/win32/msvc2019/wpgimport/wpgimport.vcxproj
+index 5451025ac..a49df3bb7 100644
+--- a/win32/msvc2019/wpgimport/wpgimport.vcxproj
++++ b/win32/msvc2019/wpgimport/wpgimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importwpg</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/wpgimport/wpgimport.vcxproj.user b/win32/msvc2019/wpgimport/wpgimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/wpgimport/wpgimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/xarimport/xarimport.vcxproj b/win32/msvc2019/xarimport/xarimport.vcxproj
+index 7a784e6ae..af576f0f5 100644
+--- a/win32/msvc2019/xarimport/xarimport.vcxproj
++++ b/win32/msvc2019/xarimport/xarimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importxar</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/xarimport/xarimport.vcxproj.user b/win32/msvc2019/xarimport/xarimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/xarimport/xarimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/xfigimport/xfigimport.vcxproj b/win32/msvc2019/xfigimport/xfigimport.vcxproj
+index a3c614c93..58e9089f3 100644
+--- a/win32/msvc2019/xfigimport/xfigimport.vcxproj
++++ b/win32/msvc2019/xfigimport/xfigimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importxfig</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/xfigimport/xfigimport.vcxproj.user b/win32/msvc2019/xfigimport/xfigimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/xfigimport/xfigimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/xpsexport/xpsexport.vcxproj b/win32/msvc2019/xpsexport/xpsexport.vcxproj
+index ba3f25917..7cc695d38 100644
+--- a/win32/msvc2019/xpsexport/xpsexport.vcxproj
++++ b/win32/msvc2019/xpsexport/xpsexport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>xpsexplugin</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/xpsexport/xpsexport.vcxproj.user b/win32/msvc2019/xpsexport/xpsexport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/xpsexport/xpsexport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/xpsimport/xpsimport.vcxproj b/win32/msvc2019/xpsimport/xpsimport.vcxproj
+index 032003635..2b598508e 100644
+--- a/win32/msvc2019/xpsimport/xpsimport.vcxproj
++++ b/win32/msvc2019/xpsimport/xpsimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importxps</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/xpsimport/xpsimport.vcxproj.user b/win32/msvc2019/xpsimport/xpsimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/xpsimport/xpsimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
+diff --git a/win32/msvc2019/zmfimport/zmfimport.vcxproj b/win32/msvc2019/zmfimport/zmfimport.vcxproj
+index b32b0afa0..4cabc46d8 100644
+--- a/win32/msvc2019/zmfimport/zmfimport.vcxproj
++++ b/win32/msvc2019/zmfimport/zmfimport.vcxproj
+@@ -92,6 +92,8 @@
+     <IntDir>..\..\..\..\Scribus-builds\Build-objs\$(Configuration)-$(Platform)-$(PlatformToolset)\$(TargetName)\</IntDir>
+     <LinkIncremental>false</LinkIncremental>
+     <TargetName>importzmf</TargetName>
++    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Projects\git\scibus_deps\icu\include;C:\Projects\git\scibus_deps\librevenge-0.0.4\inc;C:\Projects\git\scibus_deps\freetype-2.10.4\include</IncludePath>
++    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);C:\Projects\git\scibus_deps\libs</LibraryPath>
+   </PropertyGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+     <ClCompile>
+diff --git a/win32/msvc2019/zmfimport/zmfimport.vcxproj.user b/win32/msvc2019/zmfimport/zmfimport.vcxproj.user
+new file mode 100644
+index 000000000..0f14913f3
+--- /dev/null
++++ b/win32/msvc2019/zmfimport/zmfimport.vcxproj.user
+@@ -0,0 +1,4 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
++  <PropertyGroup />
++</Project>
+\ No newline at end of file
